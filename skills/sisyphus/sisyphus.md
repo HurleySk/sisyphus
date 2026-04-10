@@ -48,19 +48,23 @@ Store gathered data in memory for this section — the producer and evaluator bo
 
 #### 2b. Produce Draft
 
-Dispatch a **producer agent** with:
+You MUST use the **Agent tool** to spawn a separate **producer subagent** (see `skills/sisyphus/producer.md`). Hand it:
 - The section description from the spec
 - All gathered data
 - If retrying: the previous draft + evaluator feedback
 
-The producer writes the section content as markdown.
+The producer subagent writes the section content as markdown and returns it to you. You receive the markdown back; you do not write it yourself.
+
+**Do NOT pass acceptance criteria to the producer.** The producer should not know what will be checked — that is the evaluator's job. This separation prevents the producer from writing content that games the criteria instead of accurately representing the data.
 
 #### 2c. Evaluate
 
-Dispatch the **evaluator agent** (see `skills/sisyphus/evaluator.md`) with:
-- The produced section text
+You MUST use the **Agent tool** to spawn a separate **evaluator subagent** (see `skills/sisyphus/evaluator.md`). Hand it:
+- The produced section text (returned from the producer agent)
 - The section's criteria from the spec
 - The gathered source data (for cross-reference)
+
+The evaluator MUST be a separate Agent invocation from the producer. Never evaluate in the same agent context that produced the content — this defeats adversarial evaluation.
 
 The evaluator runs two passes:
 1. **Structural checks** (deterministic, see `lib/structural-checks.md`)
@@ -128,6 +132,18 @@ Example: `"foreach": "gather[0].entities"` with a gather that found 47 entities 
 - **Producer failure** (agent error): Retry the production step (counts toward retry limit).
 - **Evaluator failure** (agent error): Re-run evaluation. If persistent, flag section for manual review.
 - **All retries exhausted**: Flag section, move on. Never block the entire document on one section.
+
+## Anti-Patterns
+
+**If you find yourself writing markdown content for a section, STOP.** You are the orchestrator. You are the dispatcher. You gather data, you dispatch producer agents, you dispatch evaluator agents, you manage the retry loop. You never write document content yourself.
+
+Violations of this rule:
+- Writing markdown headings, tables, or prose for a section body
+- "Drafting" content and then sending it to the evaluator as if a producer wrote it
+- Combining production and evaluation in a single agent call
+- Skipping the Agent tool and inlining the producer or evaluator logic
+
+The orchestrator's output is the assembled document from section outputs returned by producer agents. The only text you write directly is progress/status logging.
 
 ## Spec File Location
 

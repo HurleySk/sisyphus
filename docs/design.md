@@ -20,17 +20,50 @@ The core (spec builder + loop + evaluator) is project-agnostic and publishable a
 
 ## Architecture
 
+### Three-Agent Architecture
+
+Sisyphus enforces strict separation of concerns across three agents:
+
+1. **Orchestrator** (dispatcher) -- manages the loop, gathers data, dispatches subagents. Never writes document content itself. Implemented in `skills/sisyphus/sisyphus.md`.
+
+2. **Producer** (subagent) -- receives section description + gathered data, returns section markdown. Does NOT receive acceptance criteria (prevents gaming the checks). Spawned via Agent tool per section. Implemented in `skills/sisyphus/producer.md`.
+
+3. **Evaluator** (subagent) -- receives produced content + criteria + gathered data, returns pass/fail results with evidence. Adversarial stance: its job is to find failures. Must be a separate Agent invocation from the producer. Implemented in `skills/sisyphus/evaluator.md`.
+
+This separation prevents the short-circuit failure mode where a single agent writes content and then declares it good enough. The producer cannot optimize for criteria it does not see. The evaluator has no attachment to content it did not write.
+
 ### The Loop
 
 ```
-CONVERSE ──▶ EXECUTE ──▶ EVALUATE
-               ▲            │
-               │  failure    │
-               │  context    │
-               └─────────────┘
+                    ORCHESTRATOR
+                         │
+          CONVERSE ──▶ EXECUTE ──▶ FINALIZE
+                         │
+                    ┌────┴────┐
+                    │  Gather │
+                    └────┬────┘
+                         │
+                    ┌────┴────┐
+                    │ PRODUCER│ (Agent tool)
+                    │ subagent│
+                    └────┬────┘
+                         │ section markdown
+                    ┌────┴─────┐
+                    │EVALUATOR │ (Agent tool)
+                    │ subagent │
+                    └────┬─────┘
+                         │ pass/fail
+                    ┌────┴────┐
+                    │ Decide  │
+                    └────┬────┘
+                    pass │    │ fail + feedback
+                         │    └──▶ retry (back to PRODUCER)
+                         ▼
+                    next section
 ```
 
 - Each **section** in the spec is processed independently
+- The orchestrator dispatches producer and evaluator as separate Agent tool calls
 - Retries carry forward: the evaluator's specific feedback + the original criteria
 - Max retries: configurable per-section (default 3)
 - After max retries: section flagged as incomplete with evaluator notes; loop continues
@@ -101,7 +134,7 @@ A spec is a JSON file with sections, data sources, and acceptance criteria:
 
 ### The Evaluator
 
-Separate agent from the producer. Its only job is to find failures.
+Separate subagent from the producer — spawned via a distinct Agent tool call. Its only job is to find failures.
 
 **Pass 1 — Structural checks** (code, no LLM):
 - Parse markdown, verify tables, count rows, check headings
@@ -173,8 +206,9 @@ sisyphus/                         # Standalone repo / skill plugin
 │   └── sisyphus/
 │       ├── sisyphus.md           # Main skill: /sisyphus (doc orchestrator)
 │       ├── task.md               # Task loop mode: /sisyphus:task
+│       ├── producer.md            # Producer subagent prompt
 │       ├── spec-builder.md       # Conversational spec builder prompt
-│       └── evaluator.md          # Evaluator agent prompt
+│       └── evaluator.md          # Evaluator subagent prompt
 ├── lib/
 │   ├── spec-schema.json          # JSON Schema for spec validation
 │   └── structural-checks.md     # Deterministic check implementations
