@@ -90,6 +90,11 @@ describe('engine: runSpec', () => {
     expect(report.boulders[0].status).toBe('passed');
     expect(report.boulders[0].attempts).toBe(2);
     expect(mockStart).toHaveBeenCalledTimes(2);
+
+    // Second call must include climb feedback so producer knows what failed
+    const secondCall = mockStart.mock.calls[1][0];
+    expect(secondCall.prompt).toContain('Previous Attempt Failed');
+    expect(secondCall.prompt).toContain('FAIL:');
   });
 
   it('flags a boulder after exhausting max retries', async () => {

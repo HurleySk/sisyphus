@@ -48,9 +48,15 @@ export async function loadSpec(filePath: string): Promise<Spec> {
     throw new Error(`Invalid JSON in spec file: ${absolutePath}`);
   }
 
-  const result = validateSpec(data);
-  if (!result.valid) {
-    throw new Error(`Spec validation failed:\n${result.errors.join('\n')}`);
+  // Validate directly (not a clone) so AJV useDefaults applies to the returned object.
+  // validateSpec uses structuredClone which discards the defaults — use the validator directly here.
+  const validate = getValidator();
+  const valid = validate(data);
+  if (!valid) {
+    const errors = (validate.errors ?? []).map(
+      (e: any) => `${e.instancePath || '/'}: ${e.message ?? 'unknown error'}`
+    );
+    throw new Error(`Spec validation failed:\n${errors.join('\n')}`);
   }
 
   return data as Spec;

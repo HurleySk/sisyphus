@@ -45,68 +45,89 @@ export async function runSpec(spec: Spec, options?: { baseDir?: string; lessonsD
 
   // Boulder loop (Thanatos enforces)
   for (const boulder of spec.boulders) {
-    const boulderMaxRetries = boulder.maxRetries ?? maxRetries;
-    let lastOutput = '';
-    let lastFailures: CheckResult[] = [];
-    let climbFeedback: string | undefined;
-    let passed = false;
+    try {
+      const boulderMaxRetries = boulder.maxRetries ?? maxRetries;
+      let lastOutput = '';
+      let lastFailures: CheckResult[] = [];
+      let climbFeedback: string | undefined;
+      let passed = false;
 
-    // Stack data (once per boulder)
-    const stackResults = await stack(boulder.stack, baseDir);
+      // Stack data (once per boulder)
+      const stackResults = await stack(boulder.stack, baseDir);
 
-    for (let attempt = 0; attempt <= boulderMaxRetries; attempt++) {
-      // Start Sisyphus (producer)
-      const producerPrompt = layer.buildProducerPrompt(boulder, stackResults, climbFeedback, lessons || undefined);
-      lastOutput = await start({ prompt: producerPrompt, model: 'sonnet' });
+      for (let attempt = 0; attempt <= boulderMaxRetries; attempt++) {
+        // Start Sisyphus (producer)
+        const producerPrompt = layer.buildProducerPrompt(boulder, stackResults, climbFeedback, lessons || undefined);
+        lastOutput = await start({ prompt: producerPrompt, model: 'sonnet' });
 
-      // Descend: structural checks
-      const structuralCriteria = boulder.criteria.filter(c => c.check !== 'custom');
-      const structuralResults = registry.runChecks(lastOutput, structuralCriteria);
+        // Descend: structural checks
+        const structuralCriteria = boulder.criteria.filter(c => c.check !== 'custom');
+        const structuralResults = registry.runChecks(lastOutput, structuralCriteria);
 
-      // Descend: Hades (custom criteria)
-      const customCriteria = boulder.criteria.filter(c => c.check === 'custom');
-      let customResults: CheckResult[] = [];
+        // Descend: Hades (custom criteria)
+        const customCriteria = boulder.criteria.filter(c => c.check === 'custom');
+        let customResults: CheckResult[] = [];
 
-      if (customCriteria.length > 0) {
-        const evaluatorPrompt = layer.buildEvaluatorPrompt(lastOutput, customCriteria, stackResults, lessons || undefined);
-        const evalRaw = await start({ prompt: evaluatorPrompt, model: 'sonnet', outputFormat: 'json' });
+        if (customCriteria.length > 0) {
+          const evaluatorPrompt = layer.buildEvaluatorPrompt(lastOutput, customCriteria, stackResults, lessons || undefined);
+          const evalRaw = await start({ prompt: evaluatorPrompt, model: 'sonnet', outputFormat: 'json' });
 
-        try {
-          const evalParsed = JSON.parse(evalRaw);
-          if (Array.isArray(evalParsed)) {
-            customResults = evalParsed.map((r: any) => ({
-              criterion: r.criterion ?? 'unknown',
-              pass: Boolean(r.pass),
-              message: r.reason ?? r.message ?? '',
-            }));
+          try {
+            const evalParsed = JSON.parse(evalRaw);
+            if (Array.isArray(evalParsed)) {
+              customResults = evalParsed.map((r: any) => ({
+                criterion: r.criterion ?? 'unknown',
+                pass: Boolean(r.pass),
+                message: r.reason ?? r.message ?? '',
+              }));
+            } else {
+              // Non-array JSON = fail all custom criteria
+              customResults = [{
+                criterion: 'Hades evaluation',
+                pass: false,
+                message: `Hades returned non-array JSON: ${evalRaw.slice(0, 200)}`,
+              }];
+            }
+          } catch {
+            customResults = [{
+              criterion: 'Hades evaluation',
+              pass: false,
+              message: `Failed to parse Hades response: ${evalRaw.slice(0, 200)}`,
+            }];
           }
-        } catch {
-          customResults = [{
-            criterion: 'Hades evaluation',
-            pass: false,
-            message: `Failed to parse Hades response: ${evalRaw.slice(0, 200)}`,
-          }];
         }
+
+        const allResults = [...structuralResults, ...customResults];
+        const failures = allResults.filter(r => !r.pass);
+
+        if (failures.length === 0) {
+          outputs.push({ name: boulder.name, content: lastOutput, attempts: attempt + 1, status: 'passed' });
+          passed = true;
+          break;
+        }
+
+        // Prepare climb feedback
+        lastFailures = failures;
+        climbFeedback = failures.map(f => `FAIL: ${f.criterion} — ${f.message}`).join('\n');
       }
 
-      const allResults = [...structuralResults, ...customResults];
-      const failures = allResults.filter(r => !r.pass);
-
-      if (failures.length === 0) {
-        outputs.push({ name: boulder.name, content: lastOutput, attempts: attempt + 1, status: 'passed' });
-        passed = true;
-        break;
+      if (!passed) {
+        outputs.push({
+          name: boulder.name, content: lastOutput,
+          attempts: boulderMaxRetries + 1, status: 'flagged', failures: lastFailures,
+        });
       }
-
-      // Prepare climb feedback
-      lastFailures = failures;
-      climbFeedback = failures.map(f => `FAIL: ${f.criterion} — ${f.message}`).join('\n');
-    }
-
-    if (!passed) {
+    } catch (err: any) {
       outputs.push({
-        name: boulder.name, content: lastOutput,
-        attempts: boulderMaxRetries + 1, status: 'flagged', failures: lastFailures,
+        name: boulder.name,
+        content: '',
+        attempts: 1,
+        status: 'flagged',
+        failures: [{
+          criterion: 'execution',
+          pass: false,
+          message: `Boulder failed with error: ${err.message}`,
+        }],
       });
     }
   }
