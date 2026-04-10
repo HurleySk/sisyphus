@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.vs/
+*.js.map
+.env
+output/
+runs/
+lessons/archive/
+temp/
