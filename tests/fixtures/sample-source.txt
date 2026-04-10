@@ -1,0 +1,3 @@
+Line 1: Project overview
+Line 2: Architecture details
+Line 3: Implementation notes
