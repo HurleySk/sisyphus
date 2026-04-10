@@ -1,6 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { filterLessons, formatLessonsForPrompt } from '../src/lessons.js';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { filterLessons, formatLessonsForPrompt, loadLessons, saveLessons } from '../src/lessons.js';
 import type { Lesson } from '../src/types.js';
+import fs from 'fs/promises';
+import path from 'path';
+import os from 'os';
 
 const sampleLessons: Lesson[] = [
   { id: 'L1', text: 'Always check row counts against source data', source: 'auto', layer: 'documentation', created: '2026-04-01', lastUsed: '2026-04-10', useCount: 5, relevance: ['row-count', 'criteria'] },
@@ -79,5 +82,101 @@ describe('formatLessonsForPrompt', () => {
     expect(result).toContain('1.');
     expect(result).toContain('2.');
     expect(result).toContain('3.');
+  });
+});
+
+describe('loadLessons', () => {
+  it('returns empty array when lessons dir has no files', async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sisyphus-lessons-test-'));
+    try {
+      const result = await loadLessons(tmpDir);
+      expect(result).toEqual([]);
+    } finally {
+      await fs.rm(tmpDir, { recursive: true });
+    }
+  });
+
+  it('loads global.json when present', async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sisyphus-lessons-test-'));
+    try {
+      const lessons: Lesson[] = [sampleLessons[0]];
+      await fs.writeFile(path.join(tmpDir, 'global.json'), JSON.stringify(lessons), 'utf-8');
+      const result = await loadLessons(tmpDir);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('L1');
+    } finally {
+      await fs.rm(tmpDir, { recursive: true });
+    }
+  });
+
+  it('loads layer-specific file when layerName is provided', async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sisyphus-lessons-test-'));
+    try {
+      const globalLessons: Lesson[] = [sampleLessons[0]];
+      const layerLessons: Lesson[] = [sampleLessons[1]];
+      await fs.writeFile(path.join(tmpDir, 'global.json'), JSON.stringify(globalLessons), 'utf-8');
+      await fs.writeFile(path.join(tmpDir, 'documentation.json'), JSON.stringify(layerLessons), 'utf-8');
+      const result = await loadLessons(tmpDir, 'documentation');
+      expect(result).toHaveLength(2);
+      const ids = result.map(l => l.id);
+      expect(ids).toContain('L1');
+      expect(ids).toContain('L2');
+    } finally {
+      await fs.rm(tmpDir, { recursive: true });
+    }
+  });
+
+  it('warns but does not throw when global.json has invalid JSON', async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sisyphus-lessons-test-'));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      await fs.writeFile(path.join(tmpDir, 'global.json'), '{broken', 'utf-8');
+      const result = await loadLessons(tmpDir);
+      expect(result).toEqual([]);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('global.json'));
+    } finally {
+      warnSpy.mockRestore();
+      await fs.rm(tmpDir, { recursive: true });
+    }
+  });
+
+  it('silently skips missing layer file (ENOENT)', async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sisyphus-lessons-test-'));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const result = await loadLessons(tmpDir, 'nonexistent-layer');
+      expect(result).toEqual([]);
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+      await fs.rm(tmpDir, { recursive: true });
+    }
+  });
+});
+
+describe('saveLessons', () => {
+  it('writes lessons as JSON to the specified file', async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sisyphus-lessons-test-'));
+    try {
+      await saveLessons(tmpDir, 'global.json', sampleLessons);
+      const raw = await fs.readFile(path.join(tmpDir, 'global.json'), 'utf-8');
+      const parsed = JSON.parse(raw);
+      expect(parsed).toHaveLength(3);
+      expect(parsed[0].id).toBe('L1');
+    } finally {
+      await fs.rm(tmpDir, { recursive: true });
+    }
+  });
+
+  it('round-trips through saveLessons + loadLessons', async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sisyphus-lessons-test-'));
+    try {
+      await saveLessons(tmpDir, 'global.json', sampleLessons);
+      const loaded = await loadLessons(tmpDir);
+      expect(loaded).toHaveLength(sampleLessons.length);
+      expect(loaded.map(l => l.id)).toEqual(sampleLessons.map(l => l.id));
+    } finally {
+      await fs.rm(tmpDir, { recursive: true });
+    }
   });
 });

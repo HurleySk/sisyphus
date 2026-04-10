@@ -56,4 +56,23 @@ describe('DocumentationLayer', () => {
     expect(content).toContain('# Details');
     await fs.unlink(outPath);
   });
+
+  it('inserts placeholder comment for flagged boulders in assembled output', async () => {
+    const outputs = [
+      { name: 'Intro', content: '# Introduction\n\nHello world.', attempts: 1, status: 'passed' as const },
+      { name: 'Broken Section', content: '', attempts: 3, status: 'flagged' as const },
+      { name: 'Details', content: '# Details\n\nMore info.', attempts: 1, status: 'passed' as const },
+    ];
+    const outPath = path.join(os.tmpdir(), `sisyphus-test-doc-flagged-${Date.now()}.md`);
+    await layer.assemble(outputs, outPath);
+    const content = await fs.readFile(outPath, 'utf-8');
+    // Passed sections appear as content
+    expect(content).toContain('# Introduction');
+    expect(content).toContain('# Details');
+    // Flagged section appears as a placeholder HTML comment
+    expect(content).toContain('<!-- FLAGGED:');
+    expect(content).toContain('"Broken Section"');
+    expect(content).toContain('3 attempts');
+    await fs.unlink(outPath);
+  });
 });

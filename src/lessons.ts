@@ -12,8 +12,10 @@ export async function loadLessons(lessonsDir: string, layerName?: string): Promi
     const raw = await fs.readFile(globalPath, 'utf-8');
     const parsed = JSON.parse(raw) as Lesson[];
     results.push(...parsed);
-  } catch {
-    // global.json missing or unreadable — treat as empty
+  } catch (err: any) {
+    if (err?.code !== 'ENOENT') {
+      console.warn(`Warning: failed to load lessons from ${globalPath}: ${err.message}`);
+    }
   }
 
   if (layerName) {
@@ -22,8 +24,10 @@ export async function loadLessons(lessonsDir: string, layerName?: string): Promi
       const raw = await fs.readFile(layerPath, 'utf-8');
       const parsed = JSON.parse(raw) as Lesson[];
       results.push(...parsed);
-    } catch {
-      // layer file missing or unreadable — treat as empty
+    } catch (err: any) {
+      if (err?.code !== 'ENOENT') {
+        console.warn(`Warning: failed to load lessons from ${layerPath}: ${err.message}`);
+      }
     }
   }
 

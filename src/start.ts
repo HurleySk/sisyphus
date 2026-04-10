@@ -1,7 +1,4 @@
-import { execFile as execFileCb } from 'child_process';
-import { promisify } from 'util';
-
-const execFile = promisify(execFileCb);
+import { spawn } from 'child_process';
 
 export interface StartOptions {
   prompt: string;
@@ -11,14 +8,33 @@ export interface StartOptions {
 }
 
 export async function start(options: StartOptions): Promise<string> {
-  const args = ['-p', options.prompt];
-  if (options.model) args.push('--model', options.model);
-  if (options.outputFormat) args.push('--output-format', options.outputFormat);
+  return new Promise((resolve, reject) => {
+    // Pass prompt via stdin to avoid Windows CLI arg length limits (~32K chars).
+    const args: string[] = ['--print'];
+    if (options.model) args.push('--model', options.model);
+    if (options.outputFormat) args.push('--output-format', options.outputFormat);
 
-  const result = await execFile('claude', args, {
-    timeout: options.timeout ?? 120_000,
-    maxBuffer: 10 * 1024 * 1024,
+    const proc = spawn('claude', args, {
+      timeout: options.timeout ?? 120_000,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (data: Buffer) => { stdout += data.toString(); });
+    proc.stderr.on('data', (data: Buffer) => { stderr += data.toString(); });
+
+    proc.on('error', reject);
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`claude exited with code ${code}: ${stderr}`));
+      } else {
+        resolve(stdout);
+      }
+    });
+
+    proc.stdin.write(options.prompt);
+    proc.stdin.end();
   });
-
-  return result.stdout;
 }

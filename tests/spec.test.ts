@@ -17,6 +17,14 @@ describe('loadSpec', () => {
   it('throws on non-existent file', async () => {
     await expect(loadSpec('nonexistent.json')).rejects.toThrow();
   });
+
+  it('throws on invalid JSON content', async () => {
+    await expect(loadSpec(path.join(fixturesDir, 'invalid-json.txt'))).rejects.toThrow('Invalid JSON');
+  });
+
+  it('throws on spec missing the layer field', async () => {
+    await expect(loadSpec(path.join(fixturesDir, 'invalid-spec-no-layer.json'))).rejects.toThrow('Spec validation failed');
+  });
 });
 
 describe('validateSpec', () => {
@@ -51,7 +59,7 @@ describe('validateSpec', () => {
     expect(result.valid).toBe(false);
   });
 
-  it('applies default maxRetries of 3', async () => {
+  it('preserves explicit maxRetries value', async () => {
     const spec = await loadSpec(path.join(fixturesDir, 'valid-spec.json'));
     expect(spec.maxRetries).toBe(2);
   });
