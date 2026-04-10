@@ -1,0 +1,40 @@
+{
+  "title": "Deploy and Test: Security Model Config",
+  "description": "Deploy updated SP to dev, run the security model pipeline, verify no errors",
+  "mode": "task-loop",
+  "maxRetries": 5,
+  "steps": [
+    {
+      "name": "Deploy SP",
+      "task": {
+        "type": "sql-deploy-sp",
+        "connection": "dev",
+        "name": "p_ADFCreateAndPopulateSecurityModelConfig",
+        "source": "staging"
+      },
+      "success": "status == 'success'",
+      "onFailure": "report"
+    },
+    {
+      "name": "Run pipeline",
+      "task": {
+        "type": "adf-run-and-wait",
+        "factory": "dev1",
+        "pipeline": "New_Security_Model_Updates_Incl_Inactives",
+        "timeout": 30
+      },
+      "success": "status == 'success'",
+      "onFailure": "analyze-and-fix"
+    },
+    {
+      "name": "Check errors",
+      "task": {
+        "type": "adf-activity-errors",
+        "factory": "dev1",
+        "runId": "{previousStep.runId}"
+      },
+      "success": "errors.length == 0",
+      "onFailure": "report"
+    }
+  ]
+}

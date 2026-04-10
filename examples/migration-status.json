@@ -1,0 +1,108 @@
+{
+  "title": "ALM Entity Migration Status Report",
+  "description": "Comprehensive status of all alm_ entity migrations from legacy SQL through staging to Dataverse",
+  "output": "output/reports/alm-migration-status.md",
+  "maxRetries": 3,
+  "sections": [
+    {
+      "name": "Entity Inventory",
+      "description": "Complete list of all alm_ prefixed entities with their current migration status, linked ADO work items, and notes on blockers or dependencies",
+      "gather": [
+        {
+          "type": "analysis",
+          "source": "dataverse-schema/_index.json",
+          "instruction": "Extract all entities with logicalName starting with 'alm_'. Return array of {logicalName, entitySetName, primaryId, attributeCount: number of attributes}"
+        },
+        {
+          "type": "ado-search",
+          "query": "migration entity alm_",
+          "filters": { "type": "User Story" }
+        },
+        {
+          "type": "analysis",
+          "source": "work-repo/pipeline/*.json",
+          "instruction": "List all pipeline names that reference alm_ entities in their SQL queries or parameters"
+        }
+      ],
+      "criteria": [
+        {
+          "check": "contains-table",
+          "columns": ["Entity", "Status", "Pipeline", "ADO Item", "Notes"],
+          "description": "Table with entity name, migration status, associated pipeline, linked ADO item, and notes"
+        },
+        {
+          "check": "row-count-gte",
+          "source": "gather[0]",
+          "min": 1,
+          "description": "At least one row per entity found in schema index"
+        },
+        {
+          "check": "custom",
+          "description": "Each entity has a status value from: Complete, In Progress, Not Started, Blocked, N/A"
+        },
+        {
+          "check": "custom",
+          "description": "Entities with status 'Blocked' must have a note explaining the blocker"
+        }
+      ]
+    },
+    {
+      "name": "Pipeline Coverage",
+      "description": "Summary of which pipelines handle which entities, run frequency, and recent success/failure rates",
+      "gather": [
+        {
+          "type": "analysis",
+          "source": "work-repo/pipeline/*.json",
+          "instruction": "For each pipeline, extract: name, entities referenced in SQL, any ForEach loops or parameterized entity lists"
+        },
+        {
+          "type": "task",
+          "step": {
+            "type": "adf-query-runs",
+            "factory": "dev1",
+            "pipeline": "onprem_NightlyOrganizationLoad",
+            "hoursBack": 168
+          }
+        }
+      ],
+      "criteria": [
+        {
+          "check": "contains-table",
+          "columns": ["Pipeline", "Entities", "Last Run", "Status"],
+          "description": "Table mapping pipelines to entities with recent run info"
+        },
+        {
+          "check": "custom",
+          "description": "Every entity from the Entity Inventory section is covered by at least one pipeline, or explicitly marked as 'No pipeline' with explanation"
+        }
+      ]
+    },
+    {
+      "name": "Open Issues",
+      "description": "Active bugs and blockers from ADO related to the migration",
+      "gather": [
+        {
+          "type": "ado-search",
+          "query": "migration data",
+          "filters": { "type": "Bug", "state": "Active" }
+        },
+        {
+          "type": "analysis",
+          "source": "errors/",
+          "instruction": "List recent error files with timestamps and brief descriptions of the failures"
+        }
+      ],
+      "criteria": [
+        {
+          "check": "contains-table",
+          "columns": ["ID", "Title", "Entity", "Severity", "Assigned To"],
+          "description": "Table of active bugs with entity association"
+        },
+        {
+          "check": "custom",
+          "description": "Each bug is linked to a specific entity from the Entity Inventory, or marked as 'cross-cutting' with explanation"
+        }
+      ]
+    }
+  ]
+}
