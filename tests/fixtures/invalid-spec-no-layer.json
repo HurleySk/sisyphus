@@ -1,0 +1,11 @@
+{
+  "title": "Missing Layer",
+  "output": "out.md",
+  "boulders": [
+    {
+      "name": "B1",
+      "description": "test",
+      "criteria": [{ "check": "custom", "description": "ok" }]
+    }
+  ]
+}
