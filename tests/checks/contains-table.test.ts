@@ -62,4 +62,16 @@ describe('containsTable', () => {
     expect(result.pass).toBe(false);
     expect(result.message).toMatch(/missing/i);
   });
+
+  it('ignores tables inside code blocks', () => {
+    const md = '# Example\n\nSome text.\n\n```\n| Fake | Table |\n|------|-------|\n| a    | b     |\n```\n';
+    const result = containsTable(md, criterion());
+    expect(result.pass).toBe(false);
+  });
+
+  it('handles escaped pipes in cells', () => {
+    const md = '| Name | Value |\n|------|-------|\n| a \\| b | c |\n';
+    const result = containsTable(md, criterion({ columns: ['Name', 'Value'] }));
+    expect(result.pass).toBe(true);
+  });
 });

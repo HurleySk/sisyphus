@@ -70,3 +70,13 @@ describe('wordCountLte', () => {
     expect(result.message).toMatch(/\d+.*5|exceeds|above/i);
   });
 });
+
+describe('fenced code block exclusion', () => {
+  it('excludes content inside fenced code blocks from word count', () => {
+    const md = 'Hello world.\n\n```javascript\nconst x = 1;\nconst y = 2;\nconst z = 3;\n```\n\nGoodbye.';
+    const result = wordCountGte(md, criterion({ min: 3 }));
+    expect(result.pass).toBe(true); // "Hello world Goodbye" = 3 words
+    const result2 = wordCountLte(md, criterion({ check: 'word-count-lte', max: 5 }));
+    expect(result2.pass).toBe(true); // Should not count code block content
+  });
+});

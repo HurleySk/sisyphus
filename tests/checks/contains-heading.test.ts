@@ -57,4 +57,10 @@ describe('containsHeading', () => {
     const result = containsHeading(MD, criterion({ heading: 'Background Details', level: 2 }));
     expect(result.pass).toBe(true);
   });
+
+  it('ignores headings inside code blocks', () => {
+    const md = 'Some text.\n\n```bash\n# this is a comment\n```\n';
+    const result = containsHeading(md, criterion({ heading: 'this is a comment' }));
+    expect(result.pass).toBe(false);
+  });
 });

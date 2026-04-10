@@ -1,4 +1,5 @@
 import type { CheckResult, Criterion } from '../../../src/types.js';
+import { stripFencedCodeBlocks, splitTableRow } from './markdown-utils.js';
 
 export interface ParsedTable {
   columns: string[];
@@ -11,7 +12,8 @@ export interface ParsedTable {
  * Returns null if no valid table is found.
  */
 export function parseTable(markdown: string): ParsedTable | null {
-  const lines = markdown.split('\n');
+  const stripped = stripFencedCodeBlocks(markdown);
+  const lines = stripped.split('\n');
 
   for (let i = 0; i < lines.length - 1; i++) {
     const headerLine = lines[i].trim();
@@ -24,12 +26,8 @@ export function parseTable(markdown: string): ParsedTable | null {
     if (!sepLine.startsWith('|') || !sepLine.endsWith('|')) continue;
     if (!/^\|[\s|:\-]+\|$/.test(sepLine)) continue;
 
-    // Parse columns from header
-    const columns = headerLine
-      .slice(1, -1)
-      .split('|')
-      .map((c) => c.trim())
-      .filter((c) => c.length > 0);
+    // Parse columns from header using splitTableRow
+    const columns = splitTableRow(headerLine).filter((c) => c.length > 0);
 
     if (columns.length === 0) continue;
 
@@ -38,10 +36,7 @@ export function parseTable(markdown: string): ParsedTable | null {
     for (let j = i + 2; j < lines.length; j++) {
       const rowLine = lines[j].trim();
       if (!rowLine.startsWith('|') || !rowLine.endsWith('|')) break;
-      const cells = rowLine
-        .slice(1, -1)
-        .split('|')
-        .map((c) => c.trim());
+      const cells = splitTableRow(rowLine);
       rows.push(cells);
     }
 

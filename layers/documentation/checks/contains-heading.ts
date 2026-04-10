@@ -1,4 +1,5 @@
 import type { CheckResult, Criterion } from '../../../src/types.js';
+import { stripFencedCodeBlocks } from './markdown-utils.js';
 
 interface Heading {
   level: number;
@@ -6,8 +7,9 @@ interface Heading {
 }
 
 function parseHeadings(markdown: string): Heading[] {
+  const stripped = stripFencedCodeBlocks(markdown);
   const headings: Heading[] = [];
-  for (const line of markdown.split('\n')) {
+  for (const line of stripped.split('\n')) {
     const match = /^(#{1,6})\s+(.+)$/.exec(line.trim());
     if (match) {
       headings.push({

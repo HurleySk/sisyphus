@@ -19,3 +19,4 @@ export { containsTable, parseTable } from './contains-table.js';
 export { rowCountGte, rowCountLte } from './row-count.js';
 export { containsHeading } from './contains-heading.js';
 export { wordCountGte, wordCountLte } from './word-count.js';
+export { stripFencedCodeBlocks, splitTableRow } from './markdown-utils.js';
