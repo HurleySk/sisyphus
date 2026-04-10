@@ -1,91 +1,142 @@
 # Sisyphus
 
-Spec-driven document and task orchestrator for Claude Code.
+Spec-driven artifact engine with adversarial evaluation. Define what you want, how to get the data, and how to know it's right. Sisyphus pushes the boulder until it stays at the top.
 
-Define what you want. Sisyphus builds it, checks it, and keeps pushing until it's right.
-
-## What It Does
-
-1. **Converse** — You describe what you need. Sisyphus asks clarifying questions and produces a structured spec with verifiable acceptance criteria.
-2. **Execute** — Autonomous agents gather data and produce document sections, pulling from local files, ADO work items, or remote task execution.
-3. **Evaluate** — An adversarial evaluator checks each section against the spec. Structural checks (table presence, row counts) are deterministic code. Custom criteria require evidence to pass.
-4. **Retry** — Failed sections get specific feedback and retry. The loop continues until all criteria pass or max retries are exhausted.
-
-## Usage
+## How It Works
 
 ```
-/sisyphus I need a migration status report for all alm_ entities
-
-/sisyphus:task Deploy the updated SP to dev, run the pipeline, verify no errors
+npx sisyphus run specs/my-spec.json
 ```
 
-## Installation
+1. **Stack** -- Gather data from files, globs, and agent-extracted summaries
+2. **Start** -- Spawn a fresh Claude instance (Sisyphus) to produce content from the data
+3. **Descend** -- Run structural checks in code, then spawn an adversarial evaluator (Hades) to judge custom criteria
+4. **Climb** -- If anything fails, format specific feedback and send Sisyphus back up the hill
 
-Install as a Claude Code skill plugin:
+The loop continues until all criteria pass or max retries are exhausted.
 
-```bash
-claude skill install HurleySk/sisyphus
+## Architecture
+
+Three layers, four agents, strict isolation:
+
+```
++-----------------------------------+
+|  Domain Layer                     |  "documentation" -> markdown checks, assembler
+|  (extensible to codegen, etc.)    |
++-----------------------------------+
+|  Core Engine                      |  spec parser, stack pipeline, spawn,
+|  (domain-agnostic)                |  produce/descend loop, climb, reporting
++-----------------------------------+
 ```
 
-## Project Structure
+| Agent | Role | Isolation |
+|-------|------|-----------|
+| **Zeus** | Conversational architect (T1) | Sees user, not the loop |
+| **Thanatos** | Orchestrator (T2, the engine) | Dispatches, never produces |
+| **Sisyphus** | Producer (T3) | Sees data + feedback, never criteria |
+| **Hades** | Evaluator (T3) | Sees output + criteria, never the goal |
 
-```
-skills/sisyphus/          # Claude Code skills
-  sisyphus.md             # Main orchestrator
-  spec-builder.md         # Conversational spec phase
-  evaluator.md            # Adversarial evaluator
-  task.md                 # Task loop mode
+## Spec Format
 
-lib/                      # Shared definitions
-  spec-schema.json        # JSON Schema for spec files
-  structural-checks.md    # Deterministic check implementations
-
-backends/                 # Pluggable data gathering
-  analysis.md             # Local file analysis (built-in)
-  ado-search.md           # Azure DevOps work items (built-in)
-  boomerang-tasks.md      # Boomerang task dispatch (plugin)
-
-examples/                 # Example specs
-  migration-status.json   # Migration status report
-  entity-mapping.json     # Entity schema mapping
-  deploy-and-test.json    # Task loop: deploy and verify
-```
-
-## How Specs Work
-
-A spec defines **sections** with **data sources** and **acceptance criteria**:
+A spec defines **boulders** (units of work) with **stack sources** (data) and **criteria** (acceptance):
 
 ```json
 {
   "title": "Entity Migration Status",
+  "layer": "documentation",
   "output": "output/reports/status.md",
-  "sections": [
+  "maxRetries": 3,
+  "boulders": [
     {
       "name": "Entity Inventory",
-      "gather": [
+      "description": "Complete list of entities with migration status",
+      "stack": [
         { "type": "analysis", "source": "schema/_index.json", "instruction": "Extract all entities" }
       ],
       "criteria": [
-        { "check": "contains-table", "columns": ["Entity", "Status"] },
-        { "check": "custom", "description": "Each entity has a status from: Complete, In Progress, Blocked" }
+        { "check": "contains-table", "description": "Has entity table", "columns": ["Entity", "Status"] },
+        { "check": "row-count-gte", "description": "Covers all entities", "min": 10 },
+        { "check": "custom", "description": "Each entity has a valid status" }
       ]
     }
   ]
 }
 ```
 
-Criteria are the contract. The evaluator checks them adversarially — it must find specific evidence that each criterion is met, or it fails the section with actionable feedback.
+## CLI
 
-## Backends
+```bash
+sisyphus validate <spec-file>     # Validate spec against schema
+sisyphus run <spec-file>          # Execute the spec
+sisyphus run <spec-file> --dry-run    # Show plan without executing
+sisyphus run <spec-file> --section <name>  # Run one boulder only
+```
 
-| Backend | Type | Description |
-|---------|------|-------------|
-| Analysis | Built-in | Read local files, Grep/Glob, agent synthesis |
-| ADO Search | Built-in | Search Azure DevOps work items via `ado-search` CLI |
-| Boomerang Tasks | Plugin | Dispatch task files to a remote work PC, poll for results |
+## Documentation Layer Checks
 
-Add custom backends by creating a new `.md` file in `backends/` following the existing format.
+Deterministic, in-code checks that can't be gamed:
+
+| Check | What it does |
+|-------|-------------|
+| `contains-table` | Verify markdown table exists with required columns |
+| `row-count-gte` / `row-count-lte` | Verify row count bounds |
+| `contains-heading` | Find heading by text and optional level |
+| `word-count-gte` / `word-count-lte` | Verify word count bounds |
+| `custom` | LLM-evaluated by Hades with adversarial stance |
+
+All structural checks are code-block-aware -- tables and headings inside fenced code blocks are ignored.
+
+## Project Structure
+
+```
+bin/sisyphus.ts              # CLI entry point
+src/
+  engine.ts                  # Boulder loop (Thanatos)
+  spec.ts                    # Spec loading + JSON schema validation
+  stack.ts                   # Data stacking pipeline
+  start.ts                   # Claude spawning via stdin pipe
+  checks.ts                  # Check registry
+  prompt-builder.ts          # Prompt assembly with isolation
+  lessons.ts                 # Cross-run learning system
+  report.ts                  # Run report generation
+  types.ts                   # Core interfaces
+layers/
+  documentation/
+    index.ts                 # Layer interface implementation
+    assembler.ts             # Markdown document assembly
+    checks/                  # Structural check implementations
+    prompts/
+      sisyphus.md            # Producer prompt
+      hades.md               # Evaluator prompt
+lib/spec-schema.json         # Base spec JSON schema
+lessons/                     # Lesson stores (global + per-layer)
+examples/                    # Example specs
+```
+
+## Lessons System
+
+Sisyphus learns across runs. When a boulder fails then succeeds after climbing, the pattern is captured as a lesson. Lessons are:
+
+- Filtered by relevance tags before injection into prompts
+- Scored by recency and frequency
+- Budget-capped to prevent context bloat (default ~2000 chars)
+- Stored per-layer (`lessons/documentation.json`) and globally (`lessons/global.json`)
+
+## Setup
+
+```bash
+npm install
+npm run build
+npm test
+```
+
+Requires Node.js 18+ and the [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code).
 
 ## Why "Sisyphus"?
 
-Because documentation is the boulder that always rolls back down. But unlike the myth, this one actually gets it to the top — eventually.
+The boulder always rolls back down. But unlike the myth, this engine keeps climbing with specific feedback until it stays at the top -- or flags it and moves on.
+
+## Related
+
+- [agentic-loop](https://github.com/allierays/agentic-loop) -- Inspiration for the two-terminal architecture
+- [HurleySk/sherlock](https://github.com/HurleySk/sherlock) -- Domain analyst skills, Sisyphus-aware
