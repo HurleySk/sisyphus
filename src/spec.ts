@@ -1,14 +1,20 @@
 import { readFileSync } from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
-import Ajv2020 from 'ajv/dist/2020.js';
+import Ajv2020Mod from 'ajv/dist/2020.js';
 import type { Spec, ValidationResult } from './types.js';
+
+// AJV ships a CommonJS module; the default export may be the class itself or
+// wrapped in a .default property depending on the Node module resolution mode.
+const Ajv2020 = (Ajv2020Mod as any).default ?? Ajv2020Mod;
 
 const schemaPath = path.join(import.meta.dirname, '..', 'lib', 'spec-schema.json');
 
-let cachedValidator: ReturnType<InstanceType<typeof Ajv2020>['compile']> | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let cachedValidator: any = null;
 
-function getValidator(): ReturnType<InstanceType<typeof Ajv2020>['compile']> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getValidator(): any {
   if (!cachedValidator) {
     const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
     const ajv = new Ajv2020({ allErrors: true, useDefaults: true });
@@ -26,7 +32,7 @@ export function validateSpec(data: unknown): ValidationResult {
   }
 
   const errors = (validate.errors ?? []).map(
-    (e) => `${e.instancePath || '/'}: ${e.message ?? 'unknown error'}`
+    (e: any) => `${e.instancePath || '/'}: ${e.message ?? 'unknown error'}`
   );
   return { valid: false, errors };
 }
@@ -38,7 +44,7 @@ export async function loadSpec(filePath: string): Promise<Spec> {
 
   try {
     data = JSON.parse(content);
-  } catch {
+  } catch (e: unknown) {
     throw new Error(`Invalid JSON in spec file: ${absolutePath}`);
   }
 

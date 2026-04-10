@@ -7,7 +7,7 @@
     "sisyphus": "./dist/bin/sisyphus.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node -e \"const{cpSync,mkdirSync}=require('fs');mkdirSync('dist/lib',{recursive:true});cpSync('lib/spec-schema.json','dist/lib/spec-schema.json');\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "dev": "tsc --watch"
