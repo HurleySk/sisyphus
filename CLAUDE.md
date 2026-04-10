@@ -31,22 +31,24 @@ Core principle: Thanatos dispatches, never produces. Sisyphus and Hades are alwa
 
 ## Current State
 
-- Design spec written: `docs/superpowers/specs/2026-04-10-sisyphus-generalized-engine-design.md`
-- Spec schema defined: `lib/spec-schema.json`
-- Example specs: `examples/`
-- Awaiting user review of design spec, then implementation planning
+- **Engine built and tested** -- 130 tests, CLI working (`npx sisyphus run/validate`)
+- Design spec: `docs/superpowers/specs/2026-04-10-sisyphus-generalized-engine-design.md`
+- Implementation plan: `docs/superpowers/plans/2026-04-10-sisyphus-engine-mvp.md`
+- Documentation layer complete with structural checks (code-block-aware)
+- Lessons system operational (global + per-layer, budget-capped)
 
 ## Next Steps
 
-1. User reviews `docs/superpowers/specs/2026-04-10-sisyphus-generalized-engine-design.md`
-2. Create implementation plan (writing-plans skill)
-3. Build the TypeScript engine: `bin/`, `src/`, `package.json`, `tsconfig.json`
+1. Test with real specs against real data (migration status report)
+2. Build Zeus (T1 conversational architect) as a Claude Code skill
+3. Add foreach boulder support
+4. Add ADO search and boomerang task stack backends
 
-## MVP Scope
+## MVP Scope (Shipped)
 
-**In**: CLI (`run`, `validate`), core engine, documentation layer, analysis stack backend, lessons system, producer/evaluator spawning via `claude -p`, structural checks as TypeScript, retry loop, artifact assembly, run report
+**Done**: CLI (`run`, `validate`, `--dry-run`), core engine (boulder loop), documentation layer (6 structural checks + assembler), analysis stack backend, lessons system, producer/evaluator spawning via stdin pipe, retry loop with climb feedback, artifact assembly, run report
 
-**Out**: Zeus (T1 conversational architect), ADO/boomerang gather backends, foreach sections, checkpoint mode, parallel sections, watch mode, cost tracking
+**Next**: Zeus (T1 conversational architect), ADO/boomerang stack backends, foreach boulders, checkpoint mode, parallel boulders, watch mode, cost tracking
 
 ## Related Repos
 
@@ -57,7 +59,7 @@ Core principle: Thanatos dispatches, never produces. Sisyphus and Hades are alwa
 
 - **Generalized engine** over document-only tool -- domain layers make it extensible to any artifact type
 - **Fresh build** over forking agentic-loop -- verification model is fundamentally different (artifact evaluation vs code verification)
-- **Node.js/TypeScript** runtime -- matches Claude Code ecosystem, `claude -p` spawning via `execFile`
+- **Node.js/TypeScript** runtime -- matches Claude Code ecosystem, spawning via stdin pipe
 - **Structural checks as code** -- deterministic TypeScript functions per domain layer, can't be gamed
 - **Gather agents** -- for files >200 lines, spawn haiku to extract relevant data before passing to producer
 - **Thin engine + fat prompts** -- logic lives in prompt templates, engine is orchestration glue

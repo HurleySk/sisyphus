@@ -1,151 +1,51 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Sisyphus Spec",
-  "description": "A structured specification for document generation with verifiable acceptance criteria",
+  "description": "A spec-driven artifact definition with boulders, stack sources, and acceptance criteria",
   "type": "object",
-  "required": ["title", "output", "sections"],
+  "required": ["title", "layer", "output", "boulders"],
   "properties": {
-    "title": {
-      "type": "string",
-      "description": "Human-readable title for this spec"
-    },
-    "description": {
-      "type": "string",
-      "description": "Brief description of what this spec produces"
-    },
-    "output": {
-      "type": "string",
-      "description": "Output file path (relative to working directory)"
-    },
-    "maxRetries": {
-      "type": "integer",
-      "default": 3,
-      "minimum": 1,
-      "maximum": 10,
-      "description": "Default max retries per section"
-    },
-    "sections": {
+    "title": { "type": "string", "description": "Human-readable title for this spec" },
+    "description": { "type": "string", "description": "Brief description of what this spec produces" },
+    "layer": { "type": "string", "description": "Domain layer to use (e.g., 'documentation')" },
+    "output": { "type": "string", "description": "Output file path (relative to working directory)" },
+    "maxRetries": { "type": "integer", "default": 3, "minimum": 1, "maximum": 10, "description": "Default max retries per boulder" },
+    "boulders": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/section" }
+      "items": { "$ref": "#/$defs/boulder" }
     }
   },
   "$defs": {
-    "section": {
+    "boulder": {
       "type": "object",
       "required": ["name", "description", "criteria"],
       "properties": {
-        "name": {
-          "type": "string",
-          "description": "Section name (may contain {template} variables when used with foreach)"
-        },
-        "description": {
-          "type": "string",
-          "description": "What this section should contain"
-        },
-        "foreach": {
-          "type": "string",
-          "description": "Reference to a gather result to iterate over (e.g., 'gather[0].entities'). Creates one section instance per item."
-        },
-        "gather": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/gatherSource" },
-          "description": "Data sources to gather before producing this section"
-        },
-        "criteria": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "#/$defs/criterion" },
-          "description": "Acceptance criteria that must pass for this section"
-        },
-        "maxRetries": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Override max retries for this section"
-        }
+        "name": { "type": "string", "description": "Boulder name" },
+        "description": { "type": "string", "description": "What this boulder should produce" },
+        "stack": { "type": "array", "items": { "$ref": "#/$defs/stackSource" }, "description": "Data sources to stack before producing" },
+        "criteria": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/criterion" }, "description": "Acceptance criteria for this boulder" },
+        "maxRetries": { "type": "integer", "minimum": 0, "description": "Override max retries for this boulder" }
       }
     },
-    "gatherSource": {
+    "stackSource": {
       "type": "object",
       "required": ["type"],
       "properties": {
-        "type": {
-          "type": "string",
-          "enum": ["analysis", "ado-search", "task"],
-          "description": "Backend type for data gathering"
-        },
-        "source": {
-          "type": "string",
-          "description": "File path or pattern (for analysis type)"
-        },
-        "instruction": {
-          "type": "string",
-          "description": "What to extract or analyze from the source"
-        },
-        "query": {
-          "type": "string",
-          "description": "Search query (for ado-search type)"
-        },
-        "filters": {
-          "type": "object",
-          "additionalProperties": { "type": "string" },
-          "description": "Filters for ado-search (type, state, area, assigned-to, tag)"
-        },
-        "step": {
-          "type": "object",
-          "description": "Boomerang task step definition (for task type)"
-        }
-      }
+        "type": { "type": "string", "description": "Stack backend type (e.g., 'analysis')" },
+        "source": { "type": "string", "description": "File path or glob pattern" },
+        "instruction": { "type": "string", "description": "What to extract from the source" }
+      },
+      "additionalProperties": true
     },
     "criterion": {
       "type": "object",
       "required": ["check", "description"],
       "properties": {
-        "check": {
-          "type": "string",
-          "enum": [
-            "contains-table",
-            "row-count-gte",
-            "row-count-lte",
-            "contains-heading",
-            "word-count-gte",
-            "word-count-lte",
-            "custom"
-          ],
-          "description": "Type of check to perform"
-        },
-        "description": {
-          "type": "string",
-          "description": "Human-readable description of what this criterion verifies"
-        },
-        "columns": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Required column names (for contains-table)"
-        },
-        "heading": {
-          "type": "string",
-          "description": "Required heading text (for contains-heading)"
-        },
-        "level": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 6,
-          "description": "Heading level (for contains-heading)"
-        },
-        "min": {
-          "type": "integer",
-          "description": "Minimum value (for row-count-gte, word-count-gte)"
-        },
-        "max": {
-          "type": "integer",
-          "description": "Maximum value (for row-count-lte, word-count-lte)"
-        },
-        "source": {
-          "type": "string",
-          "description": "Reference to a gather result for dynamic thresholds (e.g., 'gather[0]')"
-        }
-      }
+        "check": { "type": "string", "description": "Check type (structural checks registered by layer, or 'custom' for LLM evaluation)" },
+        "description": { "type": "string", "description": "Human-readable description of what this criterion verifies" }
+      },
+      "additionalProperties": true
     }
   }
 }

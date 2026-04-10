@@ -1,13 +1,14 @@
 {
   "title": "Entity Schema Mapping",
   "description": "Detailed column-level mapping from source SQL staging tables to Dataverse entity attributes",
+  "layer": "documentation",
   "output": "output/reports/entity-mapping.md",
   "maxRetries": 3,
-  "sections": [
+  "boulders": [
     {
       "name": "Entity List",
       "description": "Identify all entities to map by cross-referencing staging tables with Dataverse schema",
-      "gather": [
+      "stack": [
         {
           "type": "analysis",
           "source": "dataverse-schema/_index.json",
@@ -30,44 +31,6 @@
           "description": "Every staging table with 'alm' in the name is matched to a DV entity, or marked as 'orphan' with explanation"
         }
       ]
-    },
-    {
-      "name": "Column Mapping: {entity}",
-      "description": "Detailed column-to-attribute mapping for {entity}, including data types, transforms, and unmapped fields",
-      "foreach": "gather[0].entities",
-      "gather": [
-        {
-          "type": "analysis",
-          "source": "work-repo/SQL DB/sql-almstagingdb-dev-usgovva-01/dbo/Tables/{entity}_staging.sql",
-          "instruction": "Extract all column definitions: {name, dataType, nullable, defaultValue}"
-        },
-        {
-          "type": "analysis",
-          "source": "dataverse-schema/dev/{entity}.json",
-          "instruction": "Extract all attributes: {logicalName, attributeType, requiredLevel, displayName}"
-        },
-        {
-          "type": "analysis",
-          "source": "work-repo/SQL DB/sql-almstagingdb-dev-usgovva-01/dbo/Stored Procedures/p_*{entity}*.sql",
-          "instruction": "Extract column mappings from SELECT statements: which staging columns map to which output columns, any CASE/transform logic"
-        }
-      ],
-      "criteria": [
-        {
-          "check": "contains-table",
-          "columns": ["Staging Column", "DV Attribute", "Type", "Transform", "Notes"],
-          "description": "Mapping table with staging source, DV target, types, any transform logic, and notes"
-        },
-        {
-          "check": "custom",
-          "description": "Every column from the staging table DDL appears in the mapping table, either mapped to a DV attribute or marked as 'unmapped' with explanation"
-        },
-        {
-          "check": "custom",
-          "description": "Every required (not nullable) DV attribute has a mapped staging column or a documented default/derivation"
-        }
-      ],
-      "maxRetries": 2
     }
   ]
 }

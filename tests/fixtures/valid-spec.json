@@ -1,0 +1,26 @@
+{
+  "title": "Test Spec",
+  "layer": "documentation",
+  "output": "output/test.md",
+  "maxRetries": 2,
+  "boulders": [
+    {
+      "name": "Introduction",
+      "description": "Write an introduction section",
+      "stack": [
+        { "type": "analysis", "source": "README.md", "instruction": "Summarize the project" }
+      ],
+      "criteria": [
+        { "check": "word-count-gte", "description": "At least 100 words", "min": 100 },
+        { "check": "contains-heading", "description": "Has a heading", "heading": "Introduction" }
+      ]
+    },
+    {
+      "name": "Summary",
+      "description": "Write a summary section",
+      "criteria": [
+        { "check": "custom", "description": "Accurately summarizes the introduction" }
+      ]
+    }
+  ]
+}

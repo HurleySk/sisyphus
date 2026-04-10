@@ -1,22 +1,18 @@
 {
   "title": "ALM Entity Migration Status Report",
   "description": "Comprehensive status of all alm_ entity migrations from legacy SQL through staging to Dataverse",
+  "layer": "documentation",
   "output": "output/reports/alm-migration-status.md",
   "maxRetries": 3,
-  "sections": [
+  "boulders": [
     {
       "name": "Entity Inventory",
-      "description": "Complete list of all alm_ prefixed entities with their current migration status, linked ADO work items, and notes on blockers or dependencies",
-      "gather": [
+      "description": "Complete list of all alm_ prefixed entities with their current migration status and notes on blockers or dependencies",
+      "stack": [
         {
           "type": "analysis",
           "source": "dataverse-schema/_index.json",
           "instruction": "Extract all entities with logicalName starting with 'alm_'. Return array of {logicalName, entitySetName, primaryId, attributeCount: number of attributes}"
-        },
-        {
-          "type": "ado-search",
-          "query": "migration entity alm_",
-          "filters": { "type": "User Story" }
         },
         {
           "type": "analysis",
@@ -27,12 +23,12 @@
       "criteria": [
         {
           "check": "contains-table",
-          "columns": ["Entity", "Status", "Pipeline", "ADO Item", "Notes"],
-          "description": "Table with entity name, migration status, associated pipeline, linked ADO item, and notes"
+          "columns": ["Entity", "Status", "Pipeline", "Notes"],
+          "description": "Table with entity name, migration status, associated pipeline, and notes"
         },
         {
           "check": "row-count-gte",
-          "source": "gather[0]",
+          "source": "stack[0]",
           "min": 1,
           "description": "At least one row per entity found in schema index"
         },
@@ -49,43 +45,29 @@
     {
       "name": "Pipeline Coverage",
       "description": "Summary of which pipelines handle which entities, run frequency, and recent success/failure rates",
-      "gather": [
+      "stack": [
         {
           "type": "analysis",
           "source": "work-repo/pipeline/*.json",
           "instruction": "For each pipeline, extract: name, entities referenced in SQL, any ForEach loops or parameterized entity lists"
-        },
-        {
-          "type": "task",
-          "step": {
-            "type": "adf-query-runs",
-            "factory": "dev1",
-            "pipeline": "onprem_NightlyOrganizationLoad",
-            "hoursBack": 168
-          }
         }
       ],
       "criteria": [
         {
           "check": "contains-table",
-          "columns": ["Pipeline", "Entities", "Last Run", "Status"],
-          "description": "Table mapping pipelines to entities with recent run info"
+          "columns": ["Pipeline", "Entities", "Notes"],
+          "description": "Table mapping pipelines to entities with coverage notes"
         },
         {
           "check": "custom",
-          "description": "Every entity from the Entity Inventory section is covered by at least one pipeline, or explicitly marked as 'No pipeline' with explanation"
+          "description": "Every entity from the Entity Inventory boulder is covered by at least one pipeline, or explicitly marked as 'No pipeline' with explanation"
         }
       ]
     },
     {
       "name": "Open Issues",
-      "description": "Active bugs and blockers from ADO related to the migration",
-      "gather": [
-        {
-          "type": "ado-search",
-          "query": "migration data",
-          "filters": { "type": "Bug", "state": "Active" }
-        },
+      "description": "Active errors and blockers related to the migration",
+      "stack": [
         {
           "type": "analysis",
           "source": "errors/",
@@ -95,12 +77,12 @@
       "criteria": [
         {
           "check": "contains-table",
-          "columns": ["ID", "Title", "Entity", "Severity", "Assigned To"],
-          "description": "Table of active bugs with entity association"
+          "columns": ["Error", "Entity", "Severity", "Notes"],
+          "description": "Table of active errors with entity association"
         },
         {
           "check": "custom",
-          "description": "Each bug is linked to a specific entity from the Entity Inventory, or marked as 'cross-cutting' with explanation"
+          "description": "Each error is linked to a specific entity from the Entity Inventory, or marked as 'cross-cutting' with explanation"
         }
       ]
     }
