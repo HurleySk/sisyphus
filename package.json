@@ -1,16 +1,35 @@
 {
-  "name": "sisyphus",
+  "name": "sisyphus-engine",
   "version": "0.1.0",
   "description": "Spec-driven artifact engine with adversarial evaluation",
   "type": "module",
   "bin": {
     "sisyphus": "./dist/bin/sisyphus.js"
   },
+  "files": [
+    "dist/",
+    "lib/",
+    "lessons/",
+    "scripts/"
+  ],
   "scripts": {
-    "build": "tsc && node scripts/copy-assets.js",
+    "build": "tsc && node scripts/copy-assets.cjs",
+    "prepublishOnly": "npm run build && npm test",
     "test": "vitest run",
     "test:watch": "vitest",
     "dev": "tsc --watch"
+  },
+  "keywords": [
+    "claude",
+    "ai",
+    "orchestrator",
+    "adversarial-evaluation",
+    "spec-driven",
+    "document-generation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HurleySk/sisyphus.git"
   },
   "engines": {
     "node": ">=18.0.0"

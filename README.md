@@ -122,9 +122,24 @@ Sisyphus learns across runs. When a boulder fails then succeeds after climbing, 
 - Budget-capped to prevent context bloat (default ~2000 chars)
 - Stored per-layer (`lessons/documentation.json`) and globally (`lessons/global.json`)
 
-## Setup
+## Install
 
 ```bash
+npm install -g sisyphus-engine
+sisyphus run specs/my-spec.json
+```
+
+Or use without installing:
+
+```bash
+npx sisyphus-engine run specs/my-spec.json
+```
+
+### From source
+
+```bash
+git clone https://github.com/HurleySk/sisyphus.git
+cd sisyphus
 npm install
 npm run build
 npm test
