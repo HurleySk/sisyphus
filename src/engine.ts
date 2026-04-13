@@ -1,4 +1,5 @@
 import path from 'path';
+import { pathToFileURL } from 'url';
 import type { Spec, BoulderOutput, RunReport, CheckResult, Layer } from './types.js';
 import { stack } from './stack.js';
 import { start } from './start.js';
@@ -9,7 +10,7 @@ import { buildReport } from './report.js';
 // Layer discovery — dynamic import from layers/{layerName}/index.js
 async function loadLayer(layerName: string): Promise<Layer> {
   const layerPath = path.join(import.meta.dirname, '..', 'layers', layerName, 'index.js');
-  const mod = await import(layerPath);
+  const mod = await import(pathToFileURL(layerPath).href);
   const LayerClass = mod.DocumentationLayer ?? mod.default;
   return new LayerClass();
 }
@@ -42,6 +43,8 @@ export async function runSpec(spec: Spec, options?: { baseDir?: string; lessonsD
 
   const maxRetries = spec.maxRetries ?? 3;
   const outputs: BoulderOutput[] = [];
+  const verbose = options?.verbose ?? false;
+  const log = (msg: string) => { if (verbose) console.log(msg); };
 
   // Boulder loop (Thanatos enforces)
   for (const boulder of spec.boulders) {
@@ -53,9 +56,13 @@ export async function runSpec(spec: Spec, options?: { baseDir?: string; lessonsD
       let passed = false;
 
       // Stack data (once per boulder)
+      log(`[${boulder.name}] Stacking...`);
       const stackResults = await stack(boulder.stack, baseDir);
+      log(`[${boulder.name}] Stack complete (${stackResults.length} sources)`);
 
       for (let attempt = 0; attempt <= boulderMaxRetries; attempt++) {
+        log(`[${boulder.name}] Attempt ${attempt + 1}/${boulderMaxRetries + 1} — producing...`);
+
         // Start Sisyphus (producer)
         const producerPrompt = layer.buildProducerPrompt(boulder, stackResults, climbFeedback, lessons || undefined);
         lastOutput = await start({ prompt: producerPrompt, model: 'sonnet' });
@@ -69,6 +76,7 @@ export async function runSpec(spec: Spec, options?: { baseDir?: string; lessonsD
         let customResults: CheckResult[] = [];
 
         if (customCriteria.length > 0) {
+          log(`[${boulder.name}] Evaluating (${structuralCriteria.length} structural, ${customCriteria.length} custom)...`);
           const evaluatorPrompt = layer.buildEvaluatorPrompt(lastOutput, customCriteria, stackResults, lessons || undefined);
           const evalRaw = await start({ prompt: evaluatorPrompt, model: 'sonnet', outputFormat: 'json' });
 
@@ -101,6 +109,7 @@ export async function runSpec(spec: Spec, options?: { baseDir?: string; lessonsD
         const failures = allResults.filter(r => !r.pass);
 
         if (failures.length === 0) {
+          log(`[${boulder.name}] PASS on attempt ${attempt + 1}`);
           outputs.push({ name: boulder.name, content: lastOutput, attempts: attempt + 1, status: 'passed' });
           passed = true;
           break;
@@ -109,15 +118,21 @@ export async function runSpec(spec: Spec, options?: { baseDir?: string; lessonsD
         // Prepare climb feedback
         lastFailures = failures;
         climbFeedback = failures.map(f => `FAIL: ${f.criterion} — ${f.message}`).join('\n');
+        log(`[${boulder.name}] FAIL — ${failures.length} issue(s): ${failures.map(f => f.criterion).join(', ')}`);
+        if (attempt < boulderMaxRetries) {
+          log(`[${boulder.name}] Climbing with feedback...`);
+        }
       }
 
       if (!passed) {
+        log(`[${boulder.name}] FLAGGED after ${boulderMaxRetries + 1} attempts`);
         outputs.push({
           name: boulder.name, content: lastOutput,
           attempts: boulderMaxRetries + 1, status: 'flagged', failures: lastFailures,
         });
       }
     } catch (err: any) {
+      log(`[${boulder.name}] ERROR: ${err.message}`);
       outputs.push({
         name: boulder.name,
         content: '',

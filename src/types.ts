@@ -32,6 +32,7 @@ export interface Spec {
   description?: string;
   layer: string;
   output: string;
+  baseDir?: string;
   maxRetries?: number;
   boulders: Boulder[];
 }

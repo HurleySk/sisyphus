@@ -1,0 +1,36 @@
+{
+  "title": "Quick Summary",
+  "description": "Minimal spec — one boulder, one structural check. Good starting point.",
+  "layer": "documentation",
+  "output": "output/summary.md",
+  "boulders": [
+    {
+      "name": "Project Summary",
+      "description": "A brief summary of the project: what it does, how to use it, and any prerequisites",
+      "stack": [
+        {
+          "type": "analysis",
+          "source": "README.md",
+          "instruction": "Extract the project name, purpose, usage instructions, and prerequisites"
+        }
+      ],
+      "criteria": [
+        {
+          "check": "contains-heading",
+          "text": "Summary",
+          "description": "Has a Summary heading"
+        },
+        {
+          "check": "word-count-gte",
+          "min": 50,
+          "description": "At least 50 words"
+        },
+        {
+          "check": "word-count-lte",
+          "max": 300,
+          "description": "No more than 300 words — this is a summary"
+        }
+      ]
+    }
+  ]
+}

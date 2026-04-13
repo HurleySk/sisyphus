@@ -64,8 +64,14 @@ program
       console.log(`Starting: ${spec.title}`);
       console.log(`Layer: ${spec.layer} | Boulders: ${spec.boulders.length}\n`);
 
+      // Resolve baseDir: spec.baseDir (relative to spec file) → cwd fallback
+      const specDir = path.dirname(path.resolve(specFile));
+      const baseDir = spec.baseDir
+        ? path.resolve(specDir, spec.baseDir)
+        : process.cwd();
+
       const report = await runSpec(spec, {
-        baseDir: path.dirname(path.resolve(specFile)),
+        baseDir,
         verbose: opts.verbose,
       });
 

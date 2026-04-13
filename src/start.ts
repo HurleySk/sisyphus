@@ -30,6 +30,18 @@ export async function start(options: StartOptions): Promise<string> {
       if (code !== 0) {
         reject(new Error(`claude exited with code ${code}: ${stderr}`));
       } else {
+        // claude --print --output-format json wraps output in an envelope:
+        // {"type":"result","result":"<actual model output>", ...}
+        // Extract the inner result when using JSON output format.
+        if (options.outputFormat === 'json') {
+          try {
+            const envelope = JSON.parse(stdout);
+            if (envelope && typeof envelope.result === 'string') {
+              resolve(envelope.result);
+              return;
+            }
+          } catch { /* Not an envelope — fall through to raw stdout */ }
+        }
         resolve(stdout);
       }
     });

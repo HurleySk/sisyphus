@@ -1,0 +1,59 @@
+{
+  "title": "Codebase Overview",
+  "description": "Architectural overview document generated from source code analysis",
+  "layer": "documentation",
+  "output": "output/codebase-overview.md",
+  "maxRetries": 3,
+  "boulders": [
+    {
+      "name": "Module Inventory",
+      "description": "A table of all source modules with their purpose and key exports",
+      "stack": [
+        {
+          "type": "analysis",
+          "source": "src/*.ts",
+          "instruction": "For each file, identify: module name, primary purpose (one sentence), and key exported functions/classes"
+        }
+      ],
+      "criteria": [
+        {
+          "check": "contains-table",
+          "columns": ["Module", "Purpose", "Key Exports"],
+          "description": "Table listing every module with its purpose and exports"
+        },
+        {
+          "check": "row-count-gte",
+          "min": 3,
+          "description": "At least 3 modules documented"
+        }
+      ]
+    },
+    {
+      "name": "Architecture Summary",
+      "description": "High-level description of how the modules fit together, including data flow and key abstractions",
+      "stack": [
+        {
+          "type": "analysis",
+          "source": "src/*.ts",
+          "instruction": "Identify imports between modules and the primary data flow through the system"
+        }
+      ],
+      "criteria": [
+        {
+          "check": "contains-heading",
+          "text": "Architecture",
+          "description": "Has an Architecture heading"
+        },
+        {
+          "check": "word-count-gte",
+          "min": 100,
+          "description": "Substantive description (at least 100 words)"
+        },
+        {
+          "check": "custom",
+          "description": "Describes the data flow between at least 3 modules with clear directionality"
+        }
+      ]
+    }
+  ]
+}
