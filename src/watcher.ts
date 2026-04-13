@@ -1,6 +1,19 @@
 import { watch, type FSWatcher } from 'fs';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import path from 'path';
 import { EventEmitter } from 'events';
+
+const execFileAsync = promisify(execFile);
+
+export async function gitDiffStat(cwd: string): Promise<string> {
+  try {
+    const { stdout } = await execFileAsync('git', ['diff', '--stat'], { cwd, timeout: 5000 });
+    return stdout.trim();
+  } catch {
+    return '';
+  }
+}
 
 export interface FileChangeEvent {
   filePath: string;
