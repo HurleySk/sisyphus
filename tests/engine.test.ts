@@ -5,6 +5,8 @@ import { runSpec } from '../src/engine.js';
 import * as startModule from '../src/start.js';
 import * as stackModule from '../src/stack.js';
 import type { Spec } from '../src/types.js';
+import { TypedEmitter } from '../src/events.js';
+import type { SisyphusEvents } from '../src/events.js';
 
 vi.mock('../src/start.js', () => ({ start: vi.fn() }));
 vi.mock('../src/stack.js', () => ({
@@ -261,5 +263,82 @@ describe('engine: runSpec', () => {
     };
 
     await expect(runSpec(spec)).rejects.toThrow('Layer validation failed');
+  });
+});
+
+describe('engine event emission', () => {
+  it('emits run:start and run:end events', async () => {
+    const emitter = new TypedEmitter<SisyphusEvents>();
+    const events: string[] = [];
+    emitter.on('run:start', () => events.push('run:start'));
+    emitter.on('run:end', () => events.push('run:end'));
+
+    mockStart.mockResolvedValue('# Heading\n\n| Col A | Col B |\n|---|---|\n| a | b |');
+    const output = tmpOutput();
+    await runSpec(
+      { ...baseSpec, output, boulders: [{ name: 'test-boulder', description: 'Test',
+        criteria: [{ check: 'contains-heading', description: 'Has heading', heading: 'Heading', level: 1 }] }] },
+      { baseDir: import.meta.dirname, emitter },
+    );
+    expect(events).toEqual(['run:start', 'run:end']);
+  });
+
+  it('emits boulder lifecycle events in order', async () => {
+    const emitter = new TypedEmitter<SisyphusEvents>();
+    const events: string[] = [];
+    emitter.on('boulder:start', () => events.push('boulder:start'));
+    emitter.on('stack:start', () => events.push('stack:start'));
+    emitter.on('stack:end', () => events.push('stack:end'));
+    emitter.on('produce:start', () => events.push('produce:start'));
+    emitter.on('produce:end', () => events.push('produce:end'));
+    emitter.on('evaluate:start', () => events.push('evaluate:start'));
+    emitter.on('evaluate:structural', () => events.push('evaluate:structural'));
+    emitter.on('evaluate:end', () => events.push('evaluate:end'));
+    emitter.on('boulder:end', () => events.push('boulder:end'));
+
+    mockStart.mockResolvedValue('# Heading\n\nSome content here.');
+    const output = tmpOutput();
+    await runSpec(
+      { ...baseSpec, output, boulders: [{ name: 'lifecycle-test', description: 'Test',
+        criteria: [{ check: 'contains-heading', description: 'Has heading', heading: 'Heading', level: 1 }] }] },
+      { baseDir: import.meta.dirname, emitter },
+    );
+    expect(events).toEqual([
+      'boulder:start', 'stack:start', 'stack:end',
+      'produce:start', 'produce:end',
+      'evaluate:start', 'evaluate:structural', 'evaluate:end',
+      'boulder:end',
+    ]);
+  });
+
+  it('emits climb event on retry', async () => {
+    const emitter = new TypedEmitter<SisyphusEvents>();
+    const climbPayloads: any[] = [];
+    emitter.on('climb', (p) => climbPayloads.push(p));
+
+    mockStart
+      .mockResolvedValueOnce('No heading here')
+      .mockResolvedValueOnce('# Heading\n\nContent');
+    const output = tmpOutput();
+    await runSpec(
+      { ...baseSpec, output, boulders: [{ name: 'climb-test', description: 'Test',
+        criteria: [{ check: 'contains-heading', description: 'Has heading', heading: 'Heading', level: 1 }] }] },
+      { baseDir: import.meta.dirname, emitter },
+    );
+    expect(climbPayloads).toHaveLength(1);
+    expect(climbPayloads[0].boulderName).toBe('climb-test');
+    expect(climbPayloads[0].attempt).toBe(0);
+    expect(climbPayloads[0].failures.length).toBeGreaterThan(0);
+  });
+
+  it('works without emitter (backwards compatible)', async () => {
+    mockStart.mockResolvedValue('# Heading\n\nContent');
+    const output = tmpOutput();
+    const report = await runSpec(
+      { ...baseSpec, output, boulders: [{ name: 'no-emitter', description: 'Test',
+        criteria: [{ check: 'contains-heading', description: 'Has heading', heading: 'Heading', level: 1 }] }] },
+      { baseDir: import.meta.dirname },
+    );
+    expect(report.passedClean).toBe(1);
   });
 });
