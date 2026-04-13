@@ -51,17 +51,6 @@ describe('uiReducer', () => {
       expect(next.activeBoulder?.climbFeedback).toBeUndefined();
     });
 
-    it('removes boulder from pending names', () => {
-      const withPending: UIState = {
-        ...initialUIState,
-        pendingBoulderNames: ['section-1', 'section-2'],
-      };
-      const next = apply(withPending, {
-        type: 'boulder:start',
-        payload: { name: 'section-1', index: 0, total: 2, maxAttempts: 3 },
-      });
-      expect(next.pendingBoulderNames).toEqual(['section-2']);
-    });
   });
 
   describe('produce:start', () => {

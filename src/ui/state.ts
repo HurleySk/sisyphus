@@ -63,7 +63,6 @@ export interface UIState {
   totalBoulders: number;
   activeBoulder: BoulderUIState | null;
   completedBoulders: CompletedBoulder[];
-  pendingBoulderNames: string[];
   report: RunReport | null;
 }
 
@@ -73,7 +72,6 @@ export const initialUIState: UIState = {
   totalBoulders: 0,
   activeBoulder: null,
   completedBoulders: [],
-  pendingBoulderNames: [],
   report: null,
 };
 
@@ -137,7 +135,6 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       return {
         ...state,
         activeBoulder: fresh,
-        pendingBoulderNames: state.pendingBoulderNames.filter((n) => n !== name),
       };
     }
 

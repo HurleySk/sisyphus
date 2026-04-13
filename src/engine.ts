@@ -7,6 +7,7 @@ import { CheckRegistry } from './checks.js';
 import { loadLessons, filterLessons, formatLessonsForPrompt } from './lessons.js';
 import { buildReport } from './report.js';
 import type { TypedEmitter, SisyphusEvents } from './events.js';
+import { FileWatcher, gitDiffStat } from './watcher.js';
 
 // Layer discovery — dynamic import from layers/{layerName}/index.js
 async function loadLayer(layerName: string): Promise<Layer> {
@@ -88,7 +89,32 @@ export async function runSpec(
         // Start Sisyphus (producer)
         emitter?.emit('produce:start', { boulderName: boulder.name, attempt, maxAttempts: boulderMaxRetries + 1, climbFeedback });
         const producerPrompt = layer.buildProducerPrompt(boulder, stackResults, climbFeedback, lessons || undefined);
+
+        // Start file watcher (if emitter)
+        let fileWatcher: FileWatcher | undefined;
+        if (emitter) {
+          fileWatcher = new FileWatcher(baseDir);
+          fileWatcher.on('change', (event) => {
+            emitter.emit('produce:file-change', {
+              boulderName: boulder.name,
+              filePath: event.filePath,
+              changeType: event.changeType,
+            });
+          });
+          fileWatcher.start();
+        }
+
         lastOutput = await start({ prompt: producerPrompt, model: 'sonnet' });
+
+        // Stop file watcher + emit diff
+        if (fileWatcher) {
+          fileWatcher.stop();
+          const diff = await gitDiffStat(baseDir);
+          if (diff) {
+            emitter?.emit('produce:diff', { boulderName: boulder.name, attempt, diff });
+          }
+        }
+
         emitter?.emit('produce:end', { boulderName: boulder.name, attempt, outputLength: lastOutput.length });
 
         // Descend: structural checks
