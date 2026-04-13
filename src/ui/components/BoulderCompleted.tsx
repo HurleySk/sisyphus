@@ -8,6 +8,7 @@ interface BoulderCompletedProps {
   attempts: number;
   durationMs: number;
   failures?: CheckResult[];
+  results?: CheckResult[];
 }
 
 function formatDuration(ms: number): string {
@@ -18,7 +19,7 @@ function formatDuration(ms: number): string {
   return `${m}m ${s}s`;
 }
 
-export function BoulderCompleted({ name, status, attempts, durationMs, failures }: BoulderCompletedProps) {
+export function BoulderCompleted({ name, status, attempts, durationMs, results }: BoulderCompletedProps) {
   const icon = status === 'flagged' ? '✗' : '✓';
   const iconColor = status === 'flagged' ? 'red' : attempts > 1 ? 'yellow' : 'green';
   const statusLabel = status === 'flagged' ? 'flagged' : attempts > 1 ? `passed after ${attempts} attempts` : 'passed';
@@ -29,8 +30,17 @@ export function BoulderCompleted({ name, status, attempts, durationMs, failures 
         <Text color={iconColor}>{icon}</Text>{' '}<Text bold>{name}</Text>{' '}
         <Text dimColor>— {statusLabel} · {formatDuration(durationMs)}</Text>
       </Text>
-      {attempts > 1 && failures && failures.length > 0 && (
-        <Text dimColor>    attempt 1: {failures.map(f => f.criterion).join(', ')}</Text>
+      {results && results.length > 0 && (
+        <Text>
+          {'  '}
+          {results.map((r, i) => (
+            <Text key={i}>
+              <Text color={r.pass ? 'green' : 'red'}>{r.pass ? '✓' : '✗'}</Text>
+              {' '}<Text dimColor>{r.criterion}</Text>
+              {i < results.length - 1 ? '  ' : ''}
+            </Text>
+          ))}
+        </Text>
       )}
     </Box>
   );

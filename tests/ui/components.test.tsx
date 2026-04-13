@@ -2,7 +2,6 @@ import { describe, it, expect, afterEach } from 'vitest';
 import React from 'react';
 import { render, cleanup } from 'ink-testing-library';
 import { Header } from '../../src/ui/components/Header.js';
-import { Footer } from '../../src/ui/components/Footer.js';
 import { BoulderPending } from '../../src/ui/components/BoulderPending.js';
 import { BoulderCompleted } from '../../src/ui/components/BoulderCompleted.js';
 import { PhaseStack } from '../../src/ui/components/PhaseStack.js';
@@ -26,13 +25,10 @@ describe('Header', () => {
     expect(output).toContain('documentation');
     expect(output).toContain('42s');
   });
-});
 
-describe('Footer', () => {
-  it('renders progress count and elapsed', () => {
-    const output = renderAndCapture(<Footer completed={2} total={4} elapsed={30} />);
+  it('renders completed/total count when provided', () => {
+    const output = renderAndCapture(<Header title="Test" layer="docs" elapsed={10} completed={2} total={4} />);
     expect(output).toContain('2/4');
-    expect(output).toContain('30s');
   });
 });
 
@@ -61,13 +57,19 @@ describe('BoulderCompleted', () => {
     expect(output).toContain('broken');
   });
 
-  it('shows climb info when attempts > 1', () => {
+  it('shows inline check results when provided', () => {
+    const results = [
+      { criterion: 'contains-heading', pass: true, message: 'Found' },
+      { criterion: 'word-count-gte', pass: false, message: '187/250' },
+    ];
     const output = renderAndCapture(
       <BoulderCompleted name="mapping" status="passed" attempts={2} durationMs={48000}
-        failures={[{ criterion: 'word-count-gte', pass: false, message: '187/250' }]} />
+        failures={[{ criterion: 'word-count-gte', pass: false, message: '187/250' }]}
+        results={results} />
     );
     expect(output).toContain('mapping');
     expect(output).toContain('word-count-gte');
+    expect(output).toContain('contains-heading');
   });
 });
 

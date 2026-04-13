@@ -1,20 +1,30 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 
-interface HeaderProps { title: string; layer: string; elapsed: number; }
+interface HeaderProps {
+  title: string;
+  layer: string;
+  elapsed: number;
+  completed?: number;
+  total?: number;
+}
 
-function formatElapsed(seconds: number): string {
+export function formatElapsed(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}m ${s}s`;
 }
 
-export function Header({ title, layer, elapsed }: HeaderProps) {
+export function Header({ title, layer, elapsed, completed, total }: HeaderProps) {
+  const showCount = completed != null && total != null;
   return (
-    <Box flexDirection="column" marginBottom={1}>
-      <Text bold color="cyan">⚡ Sisyphus — {title}</Text>
-      <Text dimColor>{layer} · {formatElapsed(elapsed)}</Text>
+    <Box flexDirection="column">
+      <Box>
+        <Text color="cyan">sisyphus · {layer} · {formatElapsed(elapsed)}</Text>
+        {showCount && <Text>{' '.repeat(4)}<Text dimColor>{completed}/{total}</Text></Text>}
+      </Box>
+      <Text dimColor>{title}</Text>
     </Box>
   );
 }

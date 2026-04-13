@@ -17,7 +17,7 @@ export async function renderUI(
   const emitter = new TypedEmitter<SisyphusEvents>();
   const startTime = Date.now();
 
-  const app = render(React.createElement(App, { emitter, spec, startTime }));
+  const app = render(React.createElement(App, { emitter, spec, startTime, artifactPath, reportPath }));
 
   const report = await runSpec(spec, { ...options, emitter });
 

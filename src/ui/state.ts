@@ -85,6 +85,7 @@ export interface CompletedBoulder {
   attempts: number;
   durationMs: number;
   failures?: CheckResult[];
+  results?: CheckResult[];
 }
 
 // --- Top-level UI state ---
@@ -202,7 +203,8 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
 
     case 'boulder:end': {
       const { name, status, attempts, durationMs, failures } = action.payload;
-      const completed: CompletedBoulder = { name, status, attempts, durationMs, failures };
+      const results = state.activeBoulder?.results ?? undefined;
+      const completed: CompletedBoulder = { name, status, attempts, durationMs, failures, results };
       return {
         ...state,
         activeBoulder: null,
