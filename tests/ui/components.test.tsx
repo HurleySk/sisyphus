@@ -139,6 +139,7 @@ describe('BoulderActive', () => {
       name: 'risk-assessment', phase: 'produce', attempt: 1, maxAttempts: 4,
       startedAt: Date.now() - 18000, stackFiles: [], fileChanges: [], diffStat: null,
       climbFeedback: undefined, structuralResults: null, customResults: null, results: null,
+      dispatchLog: [],
     };
     const output = renderAndCapture(<BoulderActive boulder={boulder} />);
     expect(output).toContain('risk-assessment');
