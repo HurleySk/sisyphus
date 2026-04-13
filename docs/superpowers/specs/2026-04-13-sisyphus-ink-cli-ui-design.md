@@ -35,6 +35,8 @@ A typed wrapper around Node's `EventEmitter`. The engine receives it as `options
 | `stack:file` | `{ boulderName, filePath, lineCount, summarized }` | Per source file |
 | `stack:end` | `{ boulderName, resultCount }` | After stacking |
 | `produce:start` | `{ boulderName, attempt, maxAttempts, climbFeedback? }` | Before `start()` call |
+| `produce:file-change` | `{ boulderName, filePath, changeType, stat? }` | File created/modified during production |
+| `produce:diff` | `{ boulderName, attempt, diff }` | `git diff --stat` after producer finishes |
 | `produce:end` | `{ boulderName, attempt, outputLength }` | After `start()` returns |
 | `evaluate:start` | `{ boulderName, attempt, structuralCount, customCount }` | Before checks |
 | `evaluate:structural` | `{ boulderName, results: CheckResult[] }` | After structural checks |
@@ -100,7 +102,16 @@ Three modes:
 **BoulderActive** — Bordered box with boulder name label. Shows `Attempt {n}/{max}` when retrying. Contains the active phase component:
 
 - **PhaseStack** — Lists source files as they arrive. Each line: relative path, line count, "→ haiku extract (312→78 lines)" for summarized files.
-- **PhaseProduce** — Spinner + "Sisyphus writing..." + elapsed seconds. When climbing (attempt > 1), shows yellow climb feedback: the specific failure messages from the prior attempt.
+- **PhaseProduce** — Spinner + "Sisyphus writing..." + elapsed seconds. When climbing (attempt > 1), shows yellow climb feedback from the prior attempt. Below the spinner, a **live file change list** shows files being created/modified by the producer in real-time (via `fs.watch`). After the producer finishes, a `git diff --stat` summary replaces the file watcher output, showing the complete changeset for the attempt. Example:
+  ```
+  ⠸ risk-assessment — producing (attempt 2/4)  18s
+    climbing: "table missing Risk Level column"
+
+    FILES CHANGED
+      M src/migration/risks.ts        +12 -3
+      A src/migration/risk-matrix.ts  +47
+      M docs/risk-assessment.md       +28 -5
+  ```
 - **PhaseEvaluate** — Two stages: structural check results appear instantly (✓/✗ per criterion with details like "312/250 words"). Then "Hades evaluating..." spinner while custom criteria run. Custom results appear as Hades returns.
 - **FailureDetail** — Full criteria table: all results (pass and fail), with criterion name, pass/fail indicator, and message/evidence. Visible between `evaluate:end` and the next `produce:start`, so the user sees exactly what failed before the climb begins.
 
@@ -128,6 +139,27 @@ Three modes:
 3 passed · 1 flagged · 3m 18s total
 Artifact: output/report.md
 Report:   output/report-report.json
+```
+
+## File Watching During Production
+
+When a boulder's producer runs, the engine starts an `fs.watch` (recursive) on the working directory to detect file changes in real-time. This is domain-agnostic — any layer that writes to the filesystem gets change tracking for free.
+
+### Mechanism
+
+1. **Before `start()`**: Start `fs.watch` on `baseDir` (recursive). Filter out `.git/`, `node_modules/`, and other common noise via a configurable ignore list.
+2. **During production**: Each file create/modify event emits `produce:file-change` with the relative path and change type (`A` for new, `M` for modified).
+3. **After `start()` returns**: Stop the watcher. Run `git diff --stat` to get the authoritative changeset (lines added/removed per file). Emit `produce:diff`.
+
+### Overhead
+
+Negligible. `fs.watch` uses kernel-level notifications (ReadDirectoryChangesW on Windows, inotify on Linux, FSEvents on macOS) — no polling. The producer typically modifies a handful of files over seconds, so event volume is trivially low. The post-production `git diff --stat` is a single fast command.
+
+### File Structure Addition
+
+```
+src/
+  watcher.ts             # fs.watch wrapper: start/stop, ignore patterns, event emission
 ```
 
 ## State Management
@@ -196,6 +228,7 @@ src/
   events.ts              # TypedEmitter class, SisyphusEvents interface, payload types
   engine.ts              # (modified) optional emitter param, ~15 emit calls
   stack.ts               # (modified) optional emitter, stack:file per source
+  watcher.ts             # fs.watch wrapper: start/stop, ignore patterns, event emission
   ui/
     App.tsx              # Root component
     render.ts            # Entry: creates emitter, renders Ink, prints summary
@@ -237,6 +270,11 @@ Add to `compilerOptions`:
 2. Modify `src/engine.ts` to accept optional emitter, add ~15 emit calls
 3. Modify `src/stack.ts` to accept optional emitter, emit `stack:file` per source
 4. Verify existing tests pass (emitter is optional, zero behavioral change)
+
+### Phase 1b: File Watcher
+1. Create `src/watcher.ts` — `fs.watch` wrapper with start/stop, ignore patterns, change type detection
+2. Integrate into `src/engine.ts` — start watcher before `start()`, stop after, emit `produce:file-change` and `produce:diff`
+3. Test: verify watcher detects file changes and `git diff --stat` runs correctly
 
 ### Phase 2: Ink Scaffolding
 1. Install: `ink`, `react`, `ink-spinner`, `@types/react`
