@@ -99,7 +99,7 @@ export interface ClimbPayload {
 
 // --- Event map ---
 
-export interface SisyphusEvents {
+export interface SisyphusEvents extends Record<string, unknown> {
   'run:start': RunStartPayload;
   'run:end': RunEndPayload;
   'boulder:start': BoulderStartPayload;
