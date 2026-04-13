@@ -3,12 +3,15 @@ import path from 'path';
 import { glob } from 'glob';
 import { start } from './start.js';
 import type { StackSource, StackResult } from './types.js';
+import type { TypedEmitter, SisyphusEvents } from './events.js';
 
 const LARGE_FILE_THRESHOLD = 200;
 
 export async function stack(
   sources: StackSource[] | undefined,
   baseDir: string,
+  emitter?: TypedEmitter<SisyphusEvents>,
+  boulderName?: string,
 ): Promise<StackResult[]> {
   if (!sources || sources.length === 0) return [];
 
@@ -28,6 +31,13 @@ export async function stack(
       for (const filePath of matches) {
         const content = await fs.readFile(filePath, 'utf8');
         const lineCount = content.split('\n').length;
+        const summarized = lineCount > LARGE_FILE_THRESHOLD;
+        emitter?.emit('stack:file', {
+          boulderName: boulderName ?? 'unknown',
+          filePath,
+          lineCount,
+          summarized,
+        });
 
         let data: string;
         if (lineCount <= LARGE_FILE_THRESHOLD) {

@@ -331,6 +331,30 @@ describe('engine event emission', () => {
     expect(climbPayloads[0].failures.length).toBeGreaterThan(0);
   });
 
+  it('emits stack:file events per source file', async () => {
+    const emitter = new TypedEmitter<SisyphusEvents>();
+    const stackFiles: any[] = [];
+    emitter.on('stack:file', (p) => stackFiles.push(p));
+
+    // Use the real stack implementation for this test so stack:file events fire
+    const { stack: actualStack } = await vi.importActual<typeof import('../src/stack.js')>('../src/stack.js');
+    vi.mocked(stackModule.stack).mockImplementationOnce(actualStack as any);
+
+    mockStart.mockResolvedValue('# Heading\n\nContent');
+    const output = tmpOutput();
+    await runSpec(
+      { ...baseSpec, output, boulders: [{ name: 'stack-file-test', description: 'Test',
+        stack: [{ type: 'analysis', source: path.join(import.meta.dirname, 'fixtures', 'sample-source.txt') }],
+        criteria: [{ check: 'contains-heading', description: 'Has heading', heading: 'Heading', level: 1 }] }] },
+      { baseDir: import.meta.dirname, emitter },
+    );
+    expect(stackFiles.length).toBeGreaterThan(0);
+    expect(stackFiles[0].boulderName).toBe('stack-file-test');
+    expect(stackFiles[0].filePath).toContain('sample-source.txt');
+    expect(typeof stackFiles[0].lineCount).toBe('number');
+    expect(typeof stackFiles[0].summarized).toBe('boolean');
+  });
+
   it('works without emitter (backwards compatible)', async () => {
     mockStart.mockResolvedValue('# Heading\n\nContent');
     const output = tmpOutput();

@@ -78,7 +78,7 @@ export async function runSpec(
       // Stack data (once per boulder)
       log(`[${boulder.name}] Stacking...`);
       emitter?.emit('stack:start', { boulderName: boulder.name, sourceCount: boulder.stack?.length ?? 0 });
-      const stackResults = await stack(boulder.stack, baseDir);
+      const stackResults = await stack(boulder.stack, baseDir, emitter, boulder.name);
       log(`[${boulder.name}] Stack complete (${stackResults.length} sources)`);
       emitter?.emit('stack:end', { boulderName: boulder.name, resultCount: stackResults.length });
 
