@@ -308,7 +308,7 @@ describe('uiReducer', () => {
         payload: { boulderName: 'b1', sourceCount: 3 },
       });
       expect(state.activeBoulder?.dispatchLog).toHaveLength(1);
-      expect(state.activeBoulder?.dispatchLog[0].type).toBe('gathered');
+      expect(state.activeBoulder?.dispatchLog[0].type).toBe('gathering');
       expect(state.activeBoulder?.dispatchLog[0].message).toContain('3 sources');
     });
 

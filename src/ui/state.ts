@@ -55,7 +55,7 @@ export interface WorkerPanelState {
 
 export interface DispatchEntry {
   timestamp: number;
-  type: 'gathered' | 'dispatched-sisyphus' | 'dispatched-hades' | 'retry' | 'evaluated-pass' | 'evaluated-fail';
+  type: 'gathering' | 'gathered' | 'dispatched-sisyphus' | 'produced' | 'dispatched-hades' | 'retry' | 'evaluated-pass' | 'evaluated-fail';
   message: string;
 }
 
@@ -219,7 +219,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       const msg = sourceCount != null
         ? `gathering ${sourceCount} sources...`
         : 'gathering sources...';
-      const updated = addDispatch(state.activeBoulder, 'gathered', msg);
+      const updated = addDispatch(state.activeBoulder, 'gathering', msg);
       return {
         ...state,
         activeBoulder: { ...updated, phase: 'stack' },
@@ -328,7 +328,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       const fileCount = state.activeBoulder.fileChanges.length;
       const updated = addDispatch(
         state.activeBoulder,
-        'dispatched-sisyphus',
+        'produced',
         `\u2713 sisyphus produced ${fileCount} changes`,
       );
       return {

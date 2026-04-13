@@ -15,13 +15,15 @@ interface ThanatosPanelProps {
 
 function renderDispatchMessage(entry: DispatchEntry): React.ReactNode {
   const { message, type } = entry;
-  if (type === 'dispatched-sisyphus') {
+  if (type === 'dispatched-sisyphus' || type === 'produced') {
     const parts = message.split('sisyphus');
-    return (
-      <>
-        {parts[0]}<Text color="magenta">sisyphus</Text>{parts.slice(1).join('sisyphus')}
-      </>
-    );
+    if (parts.length > 1) {
+      return (
+        <>
+          {parts[0]}<Text color="magenta">sisyphus</Text>{parts.slice(1).join('sisyphus')}
+        </>
+      );
+    }
   }
   if (type === 'dispatched-hades') {
     const parts = message.split('hades');
@@ -36,16 +38,20 @@ function renderDispatchMessage(entry: DispatchEntry): React.ReactNode {
 
 function DispatchLogEntry({ entry }: { entry: DispatchEntry }) {
   const prefixMap: Record<string, string> = {
+    'gathering': '⋯',
     'gathered': '✓',
     'dispatched-sisyphus': '→',
+    'produced': '✓',
     'dispatched-hades': '→',
     'retry': '↻',
     'evaluated-pass': '✓',
     'evaluated-fail': '✗',
   };
   const colorMap: Record<string, string | undefined> = {
+    'gathering': undefined,
     'gathered': undefined,
     'dispatched-sisyphus': undefined,
+    'produced': undefined,
     'dispatched-hades': undefined,
     'retry': 'yellow',
     'evaluated-pass': 'green',
@@ -54,7 +60,7 @@ function DispatchLogEntry({ entry }: { entry: DispatchEntry }) {
 
   const prefix = prefixMap[entry.type] ?? '·';
   const color = colorMap[entry.type];
-  const isDim = entry.type === 'gathered' || entry.type.startsWith('dispatched');
+  const isDim = ['gathering', 'gathered', 'produced', 'dispatched-sisyphus', 'dispatched-hades'].includes(entry.type);
 
   if (isDim) {
     return (
