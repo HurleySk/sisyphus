@@ -42,8 +42,7 @@ export default class Run extends Command {
       if (flags.section) {
         spec.boulders = spec.boulders.filter(b => b.name === flags.section);
         if (spec.boulders.length === 0) {
-          console.error(`No boulder named "${flags.section}" found in spec`);
-          process.exit(1);
+          this.error(`No boulder named "${flags.section}" found in spec`, { exit: 1 });
         }
       }
 
@@ -99,7 +98,7 @@ export default class Run extends Command {
           .forEach(b => {
             this.log(`  - ${b.name}: ${b.failures?.map(f => f.message).join('; ')}`);
           });
-        process.exit(1);
+        this.exit(1);
       }
     } catch (err: any) {
       this.error(err.message);
