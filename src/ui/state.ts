@@ -261,7 +261,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       const updated = addDispatch(
         state.activeBoulder,
         'dispatched-sisyphus',
-        `\u2192 dispatched sisyphus (attempt ${attempt})`,
+        `\u2192 dispatched sisyphus (attempt ${attempt + 1})`,
       );
       return {
         ...state,

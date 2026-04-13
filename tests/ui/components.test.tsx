@@ -8,7 +8,6 @@ import { PhaseStack } from '../../src/ui/components/PhaseStack.js';
 import { PhaseProduce } from '../../src/ui/components/PhaseProduce.js';
 import { PhaseEvaluate } from '../../src/ui/components/PhaseEvaluate.js';
 import { FailureDetail } from '../../src/ui/components/FailureDetail.js';
-import { BoulderActive } from '../../src/ui/components/BoulderActive.js';
 import { PanelSeparator } from '../../src/ui/components/PanelSeparator.js';
 import { CompletionSummary } from '../../src/ui/components/CompletionSummary.js';
 import { WorkerPanel } from '../../src/ui/components/WorkerPanel.js';
@@ -141,21 +140,7 @@ describe('FailureDetail', () => {
   });
 });
 
-describe('BoulderActive', () => {
-  it('renders bordered box with name and attempt', () => {
-    const boulder: BoulderUIState = {
-      name: 'risk-assessment', phase: 'produce', attempt: 1, maxAttempts: 4,
-      startedAt: Date.now() - 18000, stackFiles: [], fileChanges: [], diffStat: null,
-      climbFeedback: undefined, structuralResults: null, customResults: null, results: null,
-      dispatchLog: [],
-    };
-    const output = renderAndCapture(<BoulderActive boulder={boulder} />);
-    expect(output).toContain('risk-assessment');
-    expect(output).toContain('attempt 2/4');
-  });
-});
-
-// --- New two-panel components ---
+// --- Two-panel components ---
 
 describe('PanelSeparator', () => {
   it('renders a horizontal line with box-drawing characters', () => {

@@ -338,7 +338,7 @@ describe('uiReducer', () => {
       const log = state.activeBoulder?.dispatchLog ?? [];
       const entry = log.find((e) => e.type === 'dispatched-sisyphus');
       expect(entry).toBeDefined();
-      expect(entry?.message).toContain('attempt 0');
+      expect(entry?.message).toContain('attempt 1');
     });
 
     it('produce:end adds sisyphus produced entry', () => {

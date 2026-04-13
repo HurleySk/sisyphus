@@ -69,7 +69,7 @@ function DispatchLogEntry({ entry }: { entry: DispatchEntry }) {
   }
 
   return (
-    <Text color={color}>    {prefix} {entry.message}</Text>
+    <Text color={color}>    {prefix} {renderDispatchMessage(entry)}</Text>
   );
 }
 
