@@ -9,6 +9,8 @@ import { PhaseStack } from '../../src/ui/components/PhaseStack.js';
 import { PhaseProduce } from '../../src/ui/components/PhaseProduce.js';
 import { PhaseEvaluate } from '../../src/ui/components/PhaseEvaluate.js';
 import { FailureDetail } from '../../src/ui/components/FailureDetail.js';
+import { BoulderActive } from '../../src/ui/components/BoulderActive.js';
+import type { BoulderUIState } from '../../src/ui/state.js';
 
 describe('Header', () => {
   it('renders title and layer', () => {
@@ -129,5 +131,19 @@ describe('FailureDetail', () => {
     expect(output).toContain('heading');
     expect(output).toContain('word-count');
     expect(output).toContain('187/250');
+  });
+});
+
+describe('BoulderActive', () => {
+  it('renders bordered box with name and attempt', () => {
+    const boulder: BoulderUIState = {
+      name: 'risk-assessment', phase: 'produce', attempt: 1, maxAttempts: 4,
+      startedAt: Date.now() - 18000, stackFiles: [], fileChanges: [], diffStat: null,
+      climbFeedback: undefined, structuralResults: null, customResults: null, results: null,
+    };
+    const { lastFrame } = render(<BoulderActive boulder={boulder} />);
+    const output = lastFrame()!;
+    expect(output).toContain('risk-assessment');
+    expect(output).toContain('attempt 2/4');
   });
 });
