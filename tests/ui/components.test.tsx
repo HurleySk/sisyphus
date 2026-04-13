@@ -5,6 +5,10 @@ import { Header } from '../../src/ui/components/Header.js';
 import { Footer } from '../../src/ui/components/Footer.js';
 import { BoulderPending } from '../../src/ui/components/BoulderPending.js';
 import { BoulderCompleted } from '../../src/ui/components/BoulderCompleted.js';
+import { PhaseStack } from '../../src/ui/components/PhaseStack.js';
+import { PhaseProduce } from '../../src/ui/components/PhaseProduce.js';
+import { PhaseEvaluate } from '../../src/ui/components/PhaseEvaluate.js';
+import { FailureDetail } from '../../src/ui/components/FailureDetail.js';
 
 describe('Header', () => {
   it('renders title and layer', () => {
@@ -60,5 +64,70 @@ describe('BoulderCompleted', () => {
     const output = lastFrame()!;
     expect(output).toContain('mapping');
     expect(output).toContain('word-count-gte');
+  });
+});
+
+describe('PhaseStack', () => {
+  it('renders file list', () => {
+    const files = [
+      { path: 'src/data.ts', lines: 42, summarized: false },
+      { path: 'data/big.csv', lines: 500, summarized: true },
+    ];
+    const { lastFrame } = render(<PhaseStack files={files} />);
+    const output = lastFrame()!;
+    expect(output).toContain('src/data.ts');
+    expect(output).toContain('42');
+    expect(output).toContain('data/big.csv');
+    expect(output).toContain('summarized');
+  });
+});
+
+describe('PhaseProduce', () => {
+  it('renders writing status', () => {
+    const { lastFrame } = render(<PhaseProduce elapsed={12} fileChanges={[]} diffStat={null} />);
+    expect(lastFrame()!).toContain('writing');
+  });
+
+  it('renders climb feedback', () => {
+    const { lastFrame } = render(
+      <PhaseProduce elapsed={18} climbFeedback="FAIL: word-count" fileChanges={[]} diffStat={null} />
+    );
+    expect(lastFrame()!).toContain('climbing');
+    expect(lastFrame()!).toContain('word-count');
+  });
+
+  it('renders file changes', () => {
+    const fileChanges = [{ filePath: 'src/risks.ts', changeType: 'M' as const }];
+    const { lastFrame } = render(<PhaseProduce elapsed={5} fileChanges={fileChanges} diffStat={null} />);
+    expect(lastFrame()!).toContain('src/risks.ts');
+  });
+});
+
+describe('PhaseEvaluate', () => {
+  it('renders structural results', () => {
+    const structural = [
+      { criterion: 'contains-heading', pass: true, message: 'Found' },
+      { criterion: 'word-count-gte', pass: false, message: '187/250' },
+    ];
+    const { lastFrame } = render(<PhaseEvaluate structuralResults={structural} customResults={[]} />);
+    const output = lastFrame()!;
+    expect(output).toContain('✓');
+    expect(output).toContain('contains-heading');
+    expect(output).toContain('✗');
+    expect(output).toContain('word-count-gte');
+  });
+});
+
+describe('FailureDetail', () => {
+  it('renders all criteria with pass/fail', () => {
+    const results = [
+      { criterion: 'heading', pass: true, message: 'Found' },
+      { criterion: 'word-count', pass: false, message: '187/250' },
+    ];
+    const { lastFrame } = render(<FailureDetail results={results} />);
+    const output = lastFrame()!;
+    expect(output).toContain('heading');
+    expect(output).toContain('word-count');
+    expect(output).toContain('187/250');
   });
 });
