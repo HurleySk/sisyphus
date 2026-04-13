@@ -49,6 +49,14 @@ program
         }
       }
 
+      // Resolve baseDir: spec.baseDir (relative to spec file) → cwd fallback
+      const specDir = path.dirname(path.resolve(specFile));
+      const baseDir = spec.baseDir
+        ? path.resolve(specDir, spec.baseDir)
+        : process.cwd();
+
+      const reportPath = spec.output.replace(/\.[^.]+$/, '') + '-report.json';
+
       if (opts.dryRun) {
         console.log(`Spec: ${spec.title}`);
         console.log(`Layer: ${spec.layer}`);
@@ -61,29 +69,30 @@ program
         return;
       }
 
-      console.log(`Starting: ${spec.title}`);
-      console.log(`Layer: ${spec.layer} | Boulders: ${spec.boulders.length}\n`);
+      const useInkUI = !opts.verbose && process.stdout.isTTY;
 
-      // Resolve baseDir: spec.baseDir (relative to spec file) → cwd fallback
-      const specDir = path.dirname(path.resolve(specFile));
-      const baseDir = spec.baseDir
-        ? path.resolve(specDir, spec.baseDir)
-        : process.cwd();
+      let report;
+      if (useInkUI) {
+        const { renderUI } = await import('../src/ui/render.js');
+        report = await renderUI(spec, { baseDir }, spec.output, reportPath);
+      } else {
+        console.log(`Starting: ${spec.title}`);
+        console.log(`Layer: ${spec.layer} | Boulders: ${spec.boulders.length}\n`);
 
-      const report = await runSpec(spec, {
-        baseDir,
-        verbose: opts.verbose,
-      });
+        report = await runSpec(spec, {
+          baseDir,
+          verbose: opts.verbose,
+        });
 
-      const reportPath = spec.output.replace(/\.[^.]+$/, '') + '-report.json';
+        console.log(`\n--- Run Complete ---`);
+        console.log(`Passed clean:       ${report.passedClean}`);
+        console.log(`Passed after climb: ${report.passedAfterClimb}`);
+        console.log(`Flagged:            ${report.flagged}`);
+        console.log(`\nArtifact: ${spec.output}`);
+        console.log(`Report:   ${reportPath}`);
+      }
+
       await writeReport(report, reportPath);
-
-      console.log(`\n--- Run Complete ---`);
-      console.log(`Passed clean:       ${report.passedClean}`);
-      console.log(`Passed after climb: ${report.passedAfterClimb}`);
-      console.log(`Flagged:            ${report.flagged}`);
-      console.log(`\nArtifact: ${spec.output}`);
-      console.log(`Report:   ${reportPath}`);
 
       if (report.flagged > 0) {
         console.log(`\nFlagged boulders:`);
