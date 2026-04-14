@@ -71,32 +71,6 @@ export const defaultAgentPanel: AgentPanelState = {
   retryHistory: [],
 };
 
-// --- Worker panel state (bottom panel) ---
-
-export type WorkerAgent = 'sisyphus' | 'hades' | null;
-
-export interface WorkerPanelState {
-  agent: WorkerAgent;
-  boulderName: string | null;
-  climbFeedback?: string;
-  fileChanges: FileChangeEntry[];
-  diffStat: string | null;
-  startedAt: number | null;
-  structuralResults: CheckResult[] | null;
-  customResults: CheckResult[] | null;
-  structuralCount: number;
-  customCount: number;
-  evaluatePassed: boolean | null;
-}
-
-// --- Dispatch log (top panel) ---
-
-export interface DispatchEntry {
-  timestamp: number;
-  type: 'gathering' | 'gathered' | 'dispatched-sisyphus' | 'produced' | 'dispatched-hades' | 'retry' | 'evaluated-pass' | 'evaluated-fail';
-  message: string;
-}
-
 // --- Active boulder state ---
 
 export interface BoulderUIState {
@@ -112,7 +86,6 @@ export interface BoulderUIState {
   customResults: CheckResult[] | null;
   results: CheckResult[] | null;
   startedAt: number;
-  dispatchLog: DispatchEntry[];
 }
 
 // --- Completed boulder ---
@@ -135,23 +108,8 @@ export interface UIState {
   activeBoulder: BoulderUIState | null;
   completedBoulders: CompletedBoulder[];
   report: RunReport | null;
-  workerPanel: WorkerPanelState;
-  agentPanel: AgentPanelState;  // NEW
+  agentPanel: AgentPanelState;
 }
-
-export const defaultWorkerPanel: WorkerPanelState = {
-  agent: null,
-  boulderName: null,
-  climbFeedback: undefined,
-  fileChanges: [],
-  diffStat: null,
-  startedAt: null,
-  structuralResults: null,
-  customResults: null,
-  structuralCount: 0,
-  customCount: 0,
-  evaluatePassed: null,
-};
 
 export const initialUIState: UIState = {
   title: '',
@@ -160,7 +118,6 @@ export const initialUIState: UIState = {
   activeBoulder: null,
   completedBoulders: [],
   report: null,
-  workerPanel: { ...defaultWorkerPanel },
   agentPanel: { ...defaultAgentPanel },
 };
 
@@ -185,17 +142,6 @@ export type UIAction =
   | { type: 'evaluate:end'; payload: EvaluateEndPayload }
   | { type: 'climb'; payload?: ClimbPayload };
 
-// --- Helpers ---
-
-function addDispatch(
-  boulder: BoulderUIState,
-  type: DispatchEntry['type'],
-  message: string,
-): BoulderUIState {
-  const entry: DispatchEntry = { timestamp: Date.now(), type, message };
-  return { ...boulder, dispatchLog: [...boulder.dispatchLog, entry] };
-}
-
 // --- Reducer ---
 
 export function uiReducer(state: UIState, action: UIAction): UIState {
@@ -214,7 +160,6 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       return {
         ...state,
         report: action.payload.report,
-        workerPanel: { ...defaultWorkerPanel },
         agentPanel: {
           ...state.agentPanel,
           agent: 'done',
@@ -237,12 +182,10 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         customResults: null,
         results: null,
         startedAt: Date.now(),
-        dispatchLog: [],
       };
       return {
         ...state,
         activeBoulder: fresh,
-        workerPanel: { ...defaultWorkerPanel },
         agentPanel: { ...defaultAgentPanel },
       };
     }
@@ -255,21 +198,15 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         ...state,
         activeBoulder: null,
         completedBoulders: [...state.completedBoulders, completed],
-        workerPanel: { ...defaultWorkerPanel },
         agentPanel: { ...defaultAgentPanel },
       };
     }
 
     case 'stack:start': {
       if (!state.activeBoulder) return state;
-      const sourceCount = action.payload?.sourceCount;
-      const msg = sourceCount != null
-        ? `gathering ${sourceCount} sources...`
-        : 'gathering sources...';
-      const updated = addDispatch(state.activeBoulder, 'gathering', msg);
       return {
         ...state,
-        activeBoulder: { ...updated, phase: 'stack' },
+        activeBoulder: { ...state.activeBoulder, phase: 'stack' },
         agentPanel: {
           ...defaultAgentPanel,
           agent: 'gathering',
@@ -301,52 +238,29 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
 
     case 'stack:end': {
       if (!state.activeBoulder) return state;
-      const resultCount = action.payload?.resultCount;
-      const msg = resultCount != null
-        ? `\u2713 gathered ${resultCount} files`
-        : '\u2713 gathered files';
-      const updated = addDispatch(state.activeBoulder, 'gathered', msg);
       return {
         ...state,
-        activeBoulder: updated,
+        activeBoulder: state.activeBoulder,
       };
     }
 
     case 'produce:start': {
       if (!state.activeBoulder) return state;
       const { attempt, climbFeedback, boulderName } = action.payload;
-      const updated = addDispatch(
-        state.activeBoulder,
-        'dispatched-sisyphus',
-        `\u2192 dispatched sisyphus (attempt ${attempt + 1})`,
-      );
       return {
         ...state,
         activeBoulder: {
-          ...updated,
+          ...state.activeBoulder,
           phase: 'produce',
           attempt,
           climbFeedback,
           fileChanges: [],
           diffStat: null,
         },
-        workerPanel: {
-          agent: 'sisyphus',
-          boulderName: boulderName ?? state.activeBoulder.name,
-          climbFeedback,
-          fileChanges: [],
-          diffStat: null,
-          startedAt: Date.now(),
-          structuralResults: null,
-          customResults: null,
-          structuralCount: 0,
-          customCount: 0,
-          evaluatePassed: null,
-        },
         agentPanel: {
           ...defaultAgentPanel,
           agent: 'sisyphus',
-          boulderName: action.payload.boulderName ?? state.activeBoulder?.name ?? null,
+          boulderName: boulderName ?? state.activeBoulder?.name ?? null,
           attempt: action.payload.attempt,
           maxAttempts: action.payload.maxAttempts,
           startedAt: Date.now(),
@@ -379,10 +293,6 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
           ...state.activeBoulder,
           fileChanges: [...state.activeBoulder.fileChanges, entry],
         },
-        workerPanel: {
-          ...state.workerPanel,
-          fileChanges: [...state.workerPanel.fileChanges, entry],
-        },
       };
     }
 
@@ -394,56 +304,27 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
           ...state.activeBoulder,
           diffStat: action.payload.diff,
         },
-        workerPanel: {
-          ...state.workerPanel,
-          diffStat: action.payload.diff,
-        },
       };
     }
 
     case 'produce:end': {
       if (!state.activeBoulder) return state;
-      const fileCount = state.activeBoulder.fileChanges.length;
-      const updated = addDispatch(
-        state.activeBoulder,
-        'produced',
-        `\u2713 sisyphus produced ${fileCount} changes`,
-      );
       return {
         ...state,
-        activeBoulder: updated,
+        activeBoulder: state.activeBoulder,
       };
     }
 
     case 'evaluate:start': {
       if (!state.activeBoulder) return state;
-      const structuralCount = action.payload?.structuralCount ?? 0;
-      const customCount = action.payload?.customCount ?? 0;
-      const updated = addDispatch(
-        state.activeBoulder,
-        'dispatched-hades',
-        '\u2192 dispatched hades',
-      );
       return {
         ...state,
         activeBoulder: {
-          ...updated,
+          ...state.activeBoulder,
           phase: 'evaluate',
           structuralResults: null,
           customResults: null,
           results: null,
-        },
-        workerPanel: {
-          agent: 'hades',
-          boulderName: action.payload?.boulderName ?? state.activeBoulder.name,
-          fileChanges: state.workerPanel.fileChanges,
-          diffStat: state.workerPanel.diffStat,
-          startedAt: Date.now(),
-          structuralResults: null,
-          customResults: null,
-          structuralCount,
-          customCount,
-          evaluatePassed: null,
         },
         agentPanel: {
           ...state.agentPanel,
@@ -464,10 +345,6 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
           ...state.activeBoulder,
           structuralResults: action.payload.results,
         },
-        workerPanel: {
-          ...state.workerPanel,
-          structuralResults: action.payload.results,
-        },
         agentPanel: {
           ...state.agentPanel,
           structuralResults: action.payload.results,
@@ -483,10 +360,6 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
           ...state.activeBoulder,
           customResults: action.payload.results,
         },
-        workerPanel: {
-          ...state.workerPanel,
-          customResults: action.payload.results,
-        },
         agentPanel: {
           ...state.agentPanel,
           customResults: action.payload.results,
@@ -496,29 +369,17 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
 
     case 'evaluate:end': {
       if (!state.activeBoulder) return state;
-      const { passed, failures } = action.payload;
+      const { passed } = action.payload;
       const structural = state.activeBoulder.structuralResults ?? [];
       const custom = state.activeBoulder.customResults ?? [];
       const allResults = [...structural, ...custom];
 
-      let updated: BoulderUIState;
-      if (passed) {
-        updated = addDispatch(state.activeBoulder, 'evaluated-pass', '\u2713 hades passed');
-      } else {
-        const issueCount = failures.length;
-        updated = addDispatch(state.activeBoulder, 'evaluated-fail', `\u2717 hades failed (${issueCount} issues)`);
-      }
-
       return {
         ...state,
         activeBoulder: {
-          ...updated,
+          ...state.activeBoulder,
           phase: passed ? 'evaluate' : 'failed',
-          results: allResults.length > 0 ? allResults : failures,
-        },
-        workerPanel: {
-          ...state.workerPanel,
-          evaluatePassed: passed,
+          results: allResults.length > 0 ? allResults : action.payload.failures,
         },
       };
     }
@@ -528,15 +389,9 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       const failureSummary = action.payload?.failures
         ?.map((f) => f.message)
         .join(', ') ?? 'evaluation failed';
-      const updated = addDispatch(
-        state.activeBoulder,
-        'retry',
-        `\u21bb retry \u2014 ${failureSummary}`,
-      );
       return {
         ...state,
-        activeBoulder: updated,
-        workerPanel: { ...defaultWorkerPanel },
+        activeBoulder: state.activeBoulder,
         agentPanel: {
           ...state.agentPanel,
           agent: 'retry',

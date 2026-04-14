@@ -1,7 +1,7 @@
 // tests/ui/state.test.ts
 import { describe, it, expect } from 'vitest';
-import { uiReducer, initialUIState, defaultWorkerPanel } from '../../src/ui/state.js';
-import type { UIState, UIAction, BoulderUIState } from '../../src/ui/state.js';
+import { uiReducer, initialUIState } from '../../src/ui/state.js';
+import type { UIState, UIAction } from '../../src/ui/state.js';
 
 function apply(state: UIState, action: UIAction): UIState {
   return uiReducer(state, action);
@@ -70,7 +70,6 @@ describe('uiReducer', () => {
           customResults: null,
           results: null,
           startedAt: Date.now(),
-          dispatchLog: [],
         },
       };
       const next = apply(withBoulder, {
@@ -103,7 +102,6 @@ describe('uiReducer', () => {
           customResults: null,
           results: null,
           startedAt: Date.now(),
-          dispatchLog: [],
         },
       };
       const next = apply(withBoulder, {
@@ -132,7 +130,6 @@ describe('uiReducer', () => {
           customResults: null,
           results: null,
           startedAt: Date.now(),
-          dispatchLog: [],
         },
       };
       const next = apply(withBoulder, {
@@ -168,7 +165,6 @@ describe('uiReducer', () => {
           customResults: null,
           results: null,
           startedAt: Date.now(),
-          dispatchLog: [],
         },
       };
       const next = apply(withCompleted, {
@@ -199,7 +195,6 @@ describe('uiReducer', () => {
           customResults: [],
           results: null,
           startedAt: Date.now(),
-          dispatchLog: [],
         },
       };
       const next = apply(withBoulder, {
@@ -225,7 +220,6 @@ describe('uiReducer', () => {
           customResults: [],
           results: null,
           startedAt: Date.now(),
-          dispatchLog: [],
         },
       };
       const next = apply(withBoulder, {
@@ -253,7 +247,6 @@ describe('uiReducer', () => {
           customResults: custom,
           results: null,
           startedAt: Date.now(),
-          dispatchLog: [],
         },
       };
       const next = apply(withBoulder, {
@@ -281,369 +274,6 @@ describe('uiReducer', () => {
         payload: { report: mockReport },
       });
       expect(next.report).toEqual(mockReport);
-    });
-  });
-
-  // --- New two-panel state tests ---
-
-  describe('dispatchLog', () => {
-    function makeBoulder(): UIState {
-      return apply(
-        apply(initialUIState, {
-          type: 'run:start',
-          payload: { title: 'T', layer: 'l', totalBoulders: 1, maxRetries: 3 },
-        }),
-        { type: 'boulder:start', payload: { name: 'b1', index: 0, total: 1, maxAttempts: 3 } },
-      );
-    }
-
-    it('boulder:start initializes empty dispatchLog', () => {
-      const state = makeBoulder();
-      expect(state.activeBoulder?.dispatchLog).toEqual([]);
-    });
-
-    it('stack:start adds gathering dispatch entry', () => {
-      const state = apply(makeBoulder(), {
-        type: 'stack:start',
-        payload: { boulderName: 'b1', sourceCount: 3 },
-      });
-      expect(state.activeBoulder?.dispatchLog).toHaveLength(1);
-      expect(state.activeBoulder?.dispatchLog[0].type).toBe('gathering');
-      expect(state.activeBoulder?.dispatchLog[0].message).toContain('3 sources');
-    });
-
-    it('stack:end adds gathered dispatch entry', () => {
-      let state = apply(makeBoulder(), {
-        type: 'stack:start',
-        payload: { boulderName: 'b1', sourceCount: 2 },
-      });
-      state = apply(state, {
-        type: 'stack:end',
-        payload: { boulderName: 'b1', resultCount: 5 },
-      });
-      expect(state.activeBoulder?.dispatchLog).toHaveLength(2);
-      expect(state.activeBoulder?.dispatchLog[1].message).toContain('5 files');
-    });
-
-    it('produce:start adds dispatched-sisyphus entry', () => {
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'stack:start',
-        payload: { boulderName: 'b1', sourceCount: 1 },
-      });
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
-      });
-      const log = state.activeBoulder?.dispatchLog ?? [];
-      const entry = log.find((e) => e.type === 'dispatched-sisyphus');
-      expect(entry).toBeDefined();
-      expect(entry?.message).toContain('attempt 1');
-    });
-
-    it('produce:end adds sisyphus produced entry', () => {
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
-      });
-      state = apply(state, {
-        type: 'produce:file-change',
-        payload: { boulderName: 'b1', filePath: 'out.md', changeType: 'A' },
-      });
-      state = apply(state, {
-        type: 'produce:end',
-        payload: { boulderName: 'b1', attempt: 0, outputLength: 100 },
-      });
-      const log = state.activeBoulder?.dispatchLog ?? [];
-      const entry = log[log.length - 1];
-      expect(entry.message).toContain('1 changes');
-    });
-
-    it('evaluate:start adds dispatched-hades entry', () => {
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
-      });
-      state = apply(state, {
-        type: 'evaluate:start',
-        payload: { boulderName: 'b1', attempt: 0, structuralCount: 2, customCount: 1 },
-      });
-      const log = state.activeBoulder?.dispatchLog ?? [];
-      const entry = log.find((e) => e.type === 'dispatched-hades');
-      expect(entry).toBeDefined();
-      expect(entry?.message).toContain('dispatched hades');
-    });
-
-    it('evaluate:end (pass) adds evaluated-pass entry', () => {
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
-      });
-      state = apply(state, {
-        type: 'evaluate:start',
-        payload: { boulderName: 'b1', attempt: 0, structuralCount: 0, customCount: 0 },
-      });
-      state = apply(state, {
-        type: 'evaluate:end',
-        payload: { boulderName: 'b1', attempt: 0, passed: true, failures: [] },
-      });
-      const log = state.activeBoulder?.dispatchLog ?? [];
-      const entry = log.find((e) => e.type === 'evaluated-pass');
-      expect(entry).toBeDefined();
-      expect(entry?.message).toContain('hades passed');
-    });
-
-    it('evaluate:end (fail) adds evaluated-fail entry with issue count', () => {
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
-      });
-      state = apply(state, {
-        type: 'evaluate:start',
-        payload: { boulderName: 'b1', attempt: 0, structuralCount: 1, customCount: 0 },
-      });
-      const failures = [
-        { criterion: 'has-heading', pass: false, message: 'No H1' },
-        { criterion: 'word-count', pass: false, message: 'Too short' },
-      ];
-      state = apply(state, {
-        type: 'evaluate:end',
-        payload: { boulderName: 'b1', attempt: 0, passed: false, failures },
-      });
-      const log = state.activeBoulder?.dispatchLog ?? [];
-      const entry = log.find((e) => e.type === 'evaluated-fail');
-      expect(entry).toBeDefined();
-      expect(entry?.message).toContain('2 issues');
-    });
-
-    it('climb adds retry entry with failure summary', () => {
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
-      });
-      state = apply(state, {
-        type: 'evaluate:start',
-        payload: { boulderName: 'b1', attempt: 0, structuralCount: 1, customCount: 0 },
-      });
-      state = apply(state, {
-        type: 'evaluate:end',
-        payload: {
-          boulderName: 'b1', attempt: 0, passed: false,
-          failures: [{ criterion: 'has-heading', pass: false, message: 'No H1' }],
-        },
-      });
-      state = apply(state, {
-        type: 'climb',
-        payload: {
-          boulderName: 'b1', attempt: 0,
-          failures: [{ criterion: 'has-heading', pass: false, message: 'No H1' }],
-        },
-      });
-      const log = state.activeBoulder?.dispatchLog ?? [];
-      const entry = log.find((e) => e.type === 'retry');
-      expect(entry).toBeDefined();
-      expect(entry?.message).toContain('retry');
-      expect(entry?.message).toContain('No H1');
-    });
-  });
-
-  describe('workerPanel', () => {
-    function makeBoulder(): UIState {
-      return apply(
-        apply(initialUIState, {
-          type: 'run:start',
-          payload: { title: 'T', layer: 'l', totalBoulders: 1, maxRetries: 3 },
-        }),
-        { type: 'boulder:start', payload: { name: 'b1', index: 0, total: 1, maxAttempts: 3 } },
-      );
-    }
-
-    it('initialUIState has default workerPanel', () => {
-      expect(initialUIState.workerPanel.agent).toBeNull();
-      expect(initialUIState.workerPanel.fileChanges).toEqual([]);
-      expect(initialUIState.workerPanel.evaluatePassed).toBeNull();
-    });
-
-    it('boulder:start resets workerPanel', () => {
-      const state = makeBoulder();
-      expect(state.workerPanel.agent).toBeNull();
-    });
-
-    it('produce:start sets workerPanel to sisyphus', () => {
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 1, maxAttempts: 3, climbFeedback: 'fix it' },
-      });
-      expect(state.workerPanel.agent).toBe('sisyphus');
-      expect(state.workerPanel.boulderName).toBe('b1');
-      expect(state.workerPanel.climbFeedback).toBe('fix it');
-      expect(state.workerPanel.fileChanges).toEqual([]);
-      expect(state.workerPanel.startedAt).toBeTypeOf('number');
-    });
-
-    it('produce:file-change appends to workerPanel.fileChanges', () => {
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
-      });
-      state = apply(state, {
-        type: 'produce:file-change',
-        payload: { boulderName: 'b1', filePath: 'out.md', changeType: 'A' },
-      });
-      expect(state.workerPanel.fileChanges).toHaveLength(1);
-      expect(state.workerPanel.fileChanges[0].filePath).toBe('out.md');
-    });
-
-    it('produce:diff sets workerPanel.diffStat', () => {
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
-      });
-      state = apply(state, {
-        type: 'produce:diff',
-        payload: { boulderName: 'b1', attempt: 0, diff: '3 files changed' },
-      });
-      expect(state.workerPanel.diffStat).toBe('3 files changed');
-    });
-
-    it('evaluate:start switches workerPanel to hades', () => {
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
-      });
-      state = apply(state, {
-        type: 'evaluate:start',
-        payload: { boulderName: 'b1', attempt: 0, structuralCount: 2, customCount: 1 },
-      });
-      expect(state.workerPanel.agent).toBe('hades');
-      expect(state.workerPanel.structuralCount).toBe(2);
-      expect(state.workerPanel.customCount).toBe(1);
-    });
-
-    it('evaluate:structural sets workerPanel.structuralResults', () => {
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
-      });
-      state = apply(state, {
-        type: 'evaluate:start',
-        payload: { boulderName: 'b1', attempt: 0, structuralCount: 1, customCount: 0 },
-      });
-      const results = [{ criterion: 'has-heading', pass: true, message: 'OK' }];
-      state = apply(state, {
-        type: 'evaluate:structural',
-        payload: { boulderName: 'b1', results },
-      });
-      expect(state.workerPanel.structuralResults).toEqual(results);
-    });
-
-    it('evaluate:custom sets workerPanel.customResults', () => {
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
-      });
-      state = apply(state, {
-        type: 'evaluate:start',
-        payload: { boulderName: 'b1', attempt: 0, structuralCount: 0, customCount: 1 },
-      });
-      const results = [{ criterion: 'custom-check', pass: false, message: 'fail' }];
-      state = apply(state, {
-        type: 'evaluate:custom',
-        payload: { boulderName: 'b1', results },
-      });
-      expect(state.workerPanel.customResults).toEqual(results);
-    });
-
-    it('evaluate:end sets workerPanel.evaluatePassed', () => {
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
-      });
-      state = apply(state, {
-        type: 'evaluate:start',
-        payload: { boulderName: 'b1', attempt: 0, structuralCount: 0, customCount: 0 },
-      });
-      state = apply(state, {
-        type: 'evaluate:end',
-        payload: { boulderName: 'b1', attempt: 0, passed: true, failures: [] },
-      });
-      expect(state.workerPanel.evaluatePassed).toBe(true);
-    });
-
-    it('evaluate:end (fail) sets evaluatePassed to false', () => {
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
-      });
-      state = apply(state, {
-        type: 'evaluate:start',
-        payload: { boulderName: 'b1', attempt: 0, structuralCount: 0, customCount: 0 },
-      });
-      state = apply(state, {
-        type: 'evaluate:end',
-        payload: {
-          boulderName: 'b1', attempt: 0, passed: false,
-          failures: [{ criterion: 'x', pass: false, message: 'bad' }],
-        },
-      });
-      expect(state.workerPanel.evaluatePassed).toBe(false);
-    });
-
-    it('climb resets workerPanel to default', () => {
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
-      });
-      state = apply(state, {
-        type: 'climb',
-        payload: {
-          boulderName: 'b1', attempt: 0,
-          failures: [{ criterion: 'x', pass: false, message: 'bad' }],
-        },
-      });
-      expect(state.workerPanel.agent).toBeNull();
-      expect(state.workerPanel.fileChanges).toEqual([]);
-    });
-
-    it('boulder:end resets workerPanel', () => {
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
-      });
-      state = apply(state, {
-        type: 'boulder:end',
-        payload: { name: 'b1', status: 'passed', attempts: 1, durationMs: 5000 },
-      });
-      expect(state.workerPanel.agent).toBeNull();
-    });
-
-    it('run:end resets workerPanel', () => {
-      const mockReport = {
-        title: 'T', startedAt: '', completedAt: '',
-        boulders: [], totalBoulders: 0, passedClean: 0, passedAfterClimb: 0, flagged: 0,
-      };
-      let state = makeBoulder();
-      state = apply(state, {
-        type: 'produce:start',
-        payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
-      });
-      state = apply(state, { type: 'run:end', payload: { report: mockReport } });
-      expect(state.workerPanel.agent).toBeNull();
     });
   });
 });
