@@ -23,27 +23,137 @@ function BoulderBadge({ name, icon, color, time }: { name: string; icon: string;
   );
 }
 
+// --- Badge width estimation helpers ---
+
+function completedBadgeWidth(b: CompletedBoulder): number {
+  // icon(1) + space(1) + name + space(1) + time(~len) + padding(4)
+  const time = formatDuration(b.durationMs);
+  return 1 + 1 + b.name.length + 1 + time.length + 4;
+}
+
+function activeBadgeWidth(name: string, phase: string | null, elapsed: number): number {
+  // icon(1) + space(1) + name + [" · phase"] + space(1) + time + padding(4)
+  const phasePart = phase ? ` · ${phase}` : '';
+  const time = formatElapsed(elapsed);
+  return 1 + 1 + name.length + phasePart.length + 1 + time.length + 4;
+}
+
+function pendingBadgeWidth(name: string): number {
+  // icon(1) + space(1) + name + padding(4)
+  return 1 + 1 + name.length + 4;
+}
+
+// --- Layout types and computation ---
+
+export interface BadgeLayout {
+  completedBadges: CompletedBoulder[];
+  collapsedCompleted: number | null;   // null = show all individually, number = show "N✓" summary
+  showActive: boolean;
+  pendingBadges: string[];
+  collapsedPending: number | null;     // null = show all individually, number = show "+N pending"
+}
+
+/** Width of the "+N pending" collapsed label including padding */
+function collapsedPendingWidth(count: number): number {
+  // "+N pending    " = 1 + digits + 1 + 7 + 4
+  return `+${count} pending`.length + 4;
+}
+
+/** Width of the "N✓" collapsed completed label including padding */
+function collapsedCompletedWidth(count: number): number {
+  // "N✓    " = digits + 1 + 4
+  return `${count}✓`.length + 4;
+}
+
+export function computeLayout(
+  completed: CompletedBoulder[],
+  activeBoulderName: string | null,
+  activePhase: string | null,
+  boulderElapsed: number,
+  pendingNames: string[],
+  availableWidth: number,
+): BadgeLayout {
+  const activeWidth = activeBoulderName
+    ? activeBadgeWidth(activeBoulderName, activePhase, boulderElapsed)
+    : 0;
+
+  const completedWidths = completed.map(b => completedBadgeWidth(b));
+  const totalCompletedWidth = completedWidths.reduce((s, w) => s + w, 0);
+
+  const pendingWidths = pendingNames.map(n => pendingBadgeWidth(n));
+  const totalPendingWidth = pendingWidths.reduce((s, w) => s + w, 0);
+
+  const totalWidth = totalCompletedWidth + activeWidth + totalPendingWidth;
+
+  // Level 0: everything fits
+  if (totalWidth <= availableWidth) {
+    return {
+      completedBadges: completed,
+      collapsedCompleted: null,
+      showActive: !!activeBoulderName,
+      pendingBadges: pendingNames,
+      collapsedPending: null,
+    };
+  }
+
+  // Level 1: collapse pending to "+N pending"
+  const level1PendingWidth = pendingNames.length > 0 ? collapsedPendingWidth(pendingNames.length) : 0;
+  const level1Width = totalCompletedWidth + activeWidth + level1PendingWidth;
+
+  if (level1Width <= availableWidth) {
+    return {
+      completedBadges: completed,
+      collapsedCompleted: null,
+      showActive: !!activeBoulderName,
+      pendingBadges: [],
+      collapsedPending: pendingNames.length > 0 ? pendingNames.length : null,
+    };
+  }
+
+  // Level 2: collapse completed to "N✓" + active + "+N pending"
+  const level2CompletedWidth = completed.length > 0 ? collapsedCompletedWidth(completed.length) : 0;
+  const level2Width = level2CompletedWidth + activeWidth + level1PendingWidth;
+
+  return {
+    completedBadges: [],
+    collapsedCompleted: completed.length > 0 ? completed.length : null,
+    showActive: !!activeBoulderName,
+    pendingBadges: [],
+    collapsedPending: pendingNames.length > 0 ? pendingNames.length : null,
+  };
+}
+
 export function StatusBar({ completed, activeBoulderName, boulderElapsed, pendingNames, total, elapsed, columns, activePhase }: StatusBarProps) {
   const completedCount = completed.length;
   const separatorWidth = columns ?? 54;
+
+  const layout = computeLayout(completed, activeBoulderName, activePhase, boulderElapsed, pendingNames, separatorWidth);
 
   return (
     <Box flexDirection="column">
       <Text dimColor>{'━'.repeat(separatorWidth)}</Text>
       <Box>
-        {completed.map((b) => {
-          const icon = b.status === 'flagged' ? '✗' : '✓';
-          const color = b.status === 'flagged' ? 'red' : b.attempts > 1 ? 'yellow' : 'green';
-          return <BoulderBadge key={b.name} name={b.name} icon={icon} color={color} time={formatDuration(b.durationMs)} />;
-        })}
-        {activeBoulderName && (
+        {layout.collapsedCompleted !== null ? (
+          <Text dimColor>{layout.collapsedCompleted}✓{'    '}</Text>
+        ) : (
+          layout.completedBadges.map((b) => {
+            const icon = b.status === 'flagged' ? '✗' : '✓';
+            const color = b.status === 'flagged' ? 'red' : b.attempts > 1 ? 'yellow' : 'green';
+            return <BoulderBadge key={b.name} name={b.name} icon={icon} color={color} time={formatDuration(b.durationMs)} />;
+          })
+        )}
+        {layout.showActive && activeBoulderName && (
           <Text>
             <Text color="cyan">●</Text> {activeBoulderName}{activePhase ? ` · ${activePhase}` : ''} {formatElapsed(boulderElapsed)}{'    '}
           </Text>
         )}
-        {pendingNames.map((name) => (
-          <BoulderBadge key={name} name={name} icon="○" color="gray" />
-        ))}
+        {layout.collapsedPending !== null ? (
+          <Text dimColor>+{layout.collapsedPending} pending</Text>
+        ) : (
+          layout.pendingBadges.map((name) => (
+            <BoulderBadge key={name} name={name} icon="○" color="gray" />
+          ))
+        )}
       </Box>
       <Box>
         <ProgressBar completed={completedCount} total={total} width={30} />
