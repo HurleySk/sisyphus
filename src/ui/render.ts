@@ -1,4 +1,3 @@
-// src/ui/render.ts
 import React from 'react';
 import { render } from 'ink';
 import { TypedEmitter } from '../events.js';
@@ -6,7 +5,6 @@ import type { SisyphusEvents } from '../events.js';
 import type { Spec, RunReport } from '../types.js';
 import { runSpec } from '../engine.js';
 import { App } from './App.js';
-import { printSummary } from './components/SummaryTable.js';
 
 export async function renderUI(
   spec: Spec,
@@ -25,6 +23,5 @@ export async function renderUI(
   app.unmount();
   await app.waitUntilExit();
 
-  printSummary(report, artifactPath, reportPath);
   return report;
 }

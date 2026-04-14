@@ -1,13 +1,12 @@
-// src/ui/App.tsx
 import React from 'react';
 import { Box } from 'ink';
 import type { TypedEmitter, SisyphusEvents } from '../events.js';
 import type { Spec } from '../types.js';
 import { useEngine } from './hooks/useEngine.js';
 import { useElapsed } from './hooks/useElapsed.js';
-import { ThanatosPanel } from './components/ThanatosPanel.js';
-import { PanelSeparator } from './components/PanelSeparator.js';
-import { WorkerPanel } from './components/WorkerPanel.js';
+import { AgentPanel } from './components/AgentPanel.js';
+import { CompletionSummary } from './components/CompletionSummary.js';
+import { StatusBar } from './components/StatusBar.js';
 
 export interface AppProps {
   emitter: TypedEmitter<SisyphusEvents>;
@@ -21,16 +20,33 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
   const state = useEngine(emitter);
   const elapsed = useElapsed(startTime);
 
+  const pendingNames = spec.boulders
+    .filter(b =>
+      !state.completedBoulders.some(c => c.name === b.name) &&
+      state.activeBoulder?.name !== b.name,
+    )
+    .map(b => b.name);
+
+  const isComplete = state.report !== null;
+
   return (
     <Box flexDirection="column">
-      <ThanatosPanel state={state} spec={spec} elapsed={elapsed} />
-      <PanelSeparator />
-      <WorkerPanel
-        workerPanel={state.workerPanel}
-        activeBoulder={state.activeBoulder}
-        report={state.report}
-        artifactPath={artifactPath}
-        reportPath={reportPath}
+      {isComplete ? (
+        <CompletionSummary
+          report={state.report!}
+          completedBoulders={state.completedBoulders}
+          artifactPath={artifactPath}
+          reportPath={reportPath}
+          elapsed={elapsed}
+        />
+      ) : (
+        <AgentPanel panel={state.agentPanel} elapsed={elapsed} />
+      )}
+      <StatusBar
+        completed={state.completedBoulders}
+        activeBoulderName={state.activeBoulder?.name ?? null}
+        pendingNames={pendingNames}
+        total={state.totalBoulders || spec.boulders.length}
         elapsed={elapsed}
       />
     </Box>
