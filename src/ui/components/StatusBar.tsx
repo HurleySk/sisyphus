@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import type { CompletedBoulder } from '../state.js';
 import { ProgressBar } from './ProgressBar.js';
+import { formatElapsed, formatDuration } from '../format.js';
 
 interface StatusBarProps {
   completed: CompletedBoulder[];
@@ -9,17 +10,6 @@ interface StatusBarProps {
   pendingNames: string[];
   total: number;
   elapsed: number;
-}
-
-function formatElapsed(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}m ${s}s`;
-}
-
-function formatDuration(ms: number): string {
-  return formatElapsed(Math.floor(ms / 1000));
 }
 
 function BoulderBadge({ name, icon, color, time }: { name: string; icon: string; color: string; time?: string }) {
@@ -43,7 +33,7 @@ export function StatusBar({ completed, activeBoulderName, pendingNames, total, e
           return <BoulderBadge key={b.name} name={b.name} icon={icon} color={color} time={formatDuration(b.durationMs)} />;
         })}
         {activeBoulderName && (
-          <BoulderBadge name={activeBoulderName} icon="●" color="cyan" />
+          <BoulderBadge name={activeBoulderName} icon="●" color="cyan" time={formatElapsed(elapsed)} />
         )}
         {pendingNames.map((name) => (
           <BoulderBadge key={name} name={name} icon="○" color="gray" />

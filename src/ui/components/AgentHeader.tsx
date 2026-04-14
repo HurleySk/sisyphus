@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { AgentMode } from '../state.js';
+import { formatElapsed } from '../format.js';
 
 interface AgentHeaderProps {
   agent: AgentMode;
@@ -8,13 +9,6 @@ interface AgentHeaderProps {
   attempt: number;
   maxAttempts: number;
   elapsed: number;
-}
-
-function formatElapsed(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}m ${s}s`;
 }
 
 const agentConfig: Record<AgentMode, { label: string; color: string }> = {
