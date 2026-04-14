@@ -74,6 +74,8 @@ export async function runSpec(
         index: spec.boulders.indexOf(boulder),
         total: spec.boulders.length,
         maxAttempts: boulderMaxRetries + 1,
+        description: boulder.description,
+        criteriaDescriptions: boulder.criteria.map(c => c.description),
       });
 
       // Stack data (once per boulder)

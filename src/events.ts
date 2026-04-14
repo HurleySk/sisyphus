@@ -20,6 +20,8 @@ export interface BoulderStartPayload {
   index: number;
   total: number;
   maxAttempts: number;
+  description: string;
+  criteriaDescriptions: string[];
 }
 
 export interface BoulderEndPayload {

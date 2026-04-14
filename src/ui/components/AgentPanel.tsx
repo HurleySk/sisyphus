@@ -43,18 +43,33 @@ function SisyphusBody({ panel, viewportHeight }: { panel: AgentPanelState; viewp
   const statusElapsed = useElapsed(panel.producerStatusStartedAt);
   const elapsedLabel = panel.producerStatusStartedAt !== null ? ` ${formatElapsed(statusElapsed)}` : '';
 
-  if (panel.producerStatus === 'idle') {
+  if (panel.producerStatus === 'idle' || panel.producerStatus === 'thinking') {
+    const label = panel.producerStatus === 'idle' ? 'starting' : 'reasoning';
     return (
       <Box flexDirection="column">
-        <Text>  <Spinner type="dots" /> starting...{elapsedLabel}</Text>
-      </Box>
-    );
-  }
-
-  if (panel.producerStatus === 'thinking') {
-    return (
-      <Box flexDirection="column">
-        <Text>  <Spinner type="dots" /> reasoning...{elapsedLabel}</Text>
+        <Text>  <Spinner type="dots" /> {label}...{elapsedLabel}</Text>
+        {panel.boulderDescription && (
+          <>
+            <Text />
+            <Text dimColor>  {panel.boulderDescription}</Text>
+          </>
+        )}
+        {panel.criteriaDescriptions.length > 0 && (
+          <>
+            <Text />
+            <Text dimColor>  criteria:</Text>
+            {panel.criteriaDescriptions.map((desc, i) => (
+              <Text key={i} dimColor>    ○ {desc}</Text>
+            ))}
+          </>
+        )}
+        {panel.climbFeedback && (
+          <>
+            <Text />
+            <Text color="yellow">  feedback from last attempt:</Text>
+            <Text color="yellow">    {panel.climbFeedback}</Text>
+          </>
+        )}
       </Box>
     );
   }

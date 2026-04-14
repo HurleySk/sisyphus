@@ -32,7 +32,7 @@ describe('TypedEmitter', () => {
 
     emitter.on('boulder:start', handler1);
     emitter.on('boulder:start', handler2);
-    emitter.emit('boulder:start', { name: 'test', index: 0, total: 1, maxAttempts: 4 });
+    emitter.emit('boulder:start', { name: 'test', index: 0, total: 1, maxAttempts: 4, description: 'test boulder', criteriaDescriptions: [] });
 
     expect(handler1).toHaveBeenCalledTimes(1);
     expect(handler2).toHaveBeenCalledTimes(1);

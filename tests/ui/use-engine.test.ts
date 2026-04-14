@@ -30,7 +30,7 @@ describe('event-to-state integration', () => {
 
     const actions: UIAction[] = [
       { type: 'run:start', payload: { title: 'Test Spec', layer: 'documentation', totalBoulders: 1, maxRetries: 3 } },
-      { type: 'boulder:start', payload: { name: 'My Boulder', index: 0, total: 1, maxAttempts: 3 } },
+      { type: 'boulder:start', payload: { name: 'My Boulder', index: 0, total: 1, maxAttempts: 3, description: 'test boulder', criteriaDescriptions: ['check 1'] } },
       { type: 'stack:start', payload: { boulderName: 'My Boulder', sourceCount: 2 } as any },
       { type: 'stack:file', payload: { boulderName: 'My Boulder', filePath: 'src/foo.ts', lineCount: 100, summarized: false } },
       { type: 'stack:end', payload: { boulderName: 'My Boulder', resultCount: 1 } as any },
@@ -98,7 +98,7 @@ describe('event-to-state integration', () => {
 
     const actions: UIAction[] = [
       { type: 'run:start', payload: { title: 'Test Spec', layer: 'documentation', totalBoulders: 1, maxRetries: 3 } },
-      { type: 'boulder:start', payload: { name: 'Retry Boulder', index: 0, total: 1, maxAttempts: 3 } },
+      { type: 'boulder:start', payload: { name: 'Retry Boulder', index: 0, total: 1, maxAttempts: 3, description: 'retry boulder', criteriaDescriptions: [] } },
       { type: 'stack:start', payload: { boulderName: 'Retry Boulder', sourceCount: 1 } as any },
       { type: 'stack:end', payload: { boulderName: 'Retry Boulder', resultCount: 1 } as any },
       // First attempt

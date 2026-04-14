@@ -14,7 +14,7 @@ describe('produce:stream action', () => {
     });
     state = apply(state, {
       type: 'boulder:start',
-      payload: { name: 'b1', index: 0, total: 1, maxAttempts: 3 },
+      payload: { name: 'b1', index: 0, total: 1, maxAttempts: 3, description: '', criteriaDescriptions: [] },
     });
     state = apply(state, {
       type: 'produce:start',
@@ -35,7 +35,7 @@ describe('agentPanel state management', () => {
         type: 'run:start',
         payload: { title: 'T', layer: 'l', totalBoulders: 1, maxRetries: 3 },
       }),
-      { type: 'boulder:start', payload: { name: 'b1', index: 0, total: 1, maxAttempts: 3 } },
+      { type: 'boulder:start', payload: { name: 'b1', index: 0, total: 1, maxAttempts: 3, description: '', criteriaDescriptions: [] } },
     );
   }
 
@@ -135,7 +135,7 @@ describe('producerStatus transitions', () => {
   it('produce:start sets producerStatus to idle', () => {
     let state = uiReducer(initialUIState, {
       type: 'boulder:start',
-      payload: { name: 'greeting', index: 0, total: 1, maxAttempts: 2 },
+      payload: { name: 'greeting', index: 0, total: 1, maxAttempts: 2, description: 'greeting boulder', criteriaDescriptions: [] },
     });
     state = uiReducer(state, {
       type: 'stack:start',
@@ -151,7 +151,7 @@ describe('producerStatus transitions', () => {
   it('produce:thinking sets producerStatus to thinking', () => {
     let state = uiReducer(initialUIState, {
       type: 'boulder:start',
-      payload: { name: 'greeting', index: 0, total: 1, maxAttempts: 2 },
+      payload: { name: 'greeting', index: 0, total: 1, maxAttempts: 2, description: 'greeting boulder', criteriaDescriptions: [] },
     });
     state = uiReducer(state, {
       type: 'stack:start',
@@ -171,7 +171,7 @@ describe('producerStatus transitions', () => {
   it('produce:stream sets producerStatus to streaming', () => {
     let state = uiReducer(initialUIState, {
       type: 'boulder:start',
-      payload: { name: 'greeting', index: 0, total: 1, maxAttempts: 2 },
+      payload: { name: 'greeting', index: 0, total: 1, maxAttempts: 2, description: 'greeting boulder', criteriaDescriptions: [] },
     });
     state = uiReducer(state, {
       type: 'stack:start',
@@ -210,7 +210,7 @@ describe('phaseHistory accumulation', () => {
     });
     state = apply(state, {
       type: 'boulder:start',
-      payload: { name: 'b1', index: 0, total: 1, maxAttempts: 3 },
+      payload: { name: 'b1', index: 0, total: 1, maxAttempts: 3, description: '', criteriaDescriptions: [] },
     });
     state = apply(state, {
       type: 'stack:start',
@@ -250,7 +250,7 @@ describe('phaseHistory accumulation', () => {
     });
     state = apply(state, {
       type: 'boulder:start',
-      payload: { name: 'b1', index: 0, total: 1, maxAttempts: 3 },
+      payload: { name: 'b1', index: 0, total: 1, maxAttempts: 3, description: '', criteriaDescriptions: [] },
     });
     // agentPanel is idle (no stack:start), go straight to produce
     state = apply(state, {

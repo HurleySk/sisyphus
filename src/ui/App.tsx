@@ -48,6 +48,18 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
 
   const isComplete = state.report !== null;
 
+  const activePhase = (() => {
+    if (state.agentPanel.agent === 'gathering') return 'gathering';
+    if (state.agentPanel.agent === 'hades') return 'evaluating';
+    if (state.agentPanel.agent === 'retry') return 'retrying';
+    if (state.agentPanel.agent === 'sisyphus') {
+      if (state.agentPanel.producerStatus === 'thinking') return 'reasoning';
+      if (state.agentPanel.producerStatus === 'streaming') return 'writing';
+      return 'starting';
+    }
+    return null;
+  })();
+
   const headerSeparator = '╌'.repeat(columns ?? 54);
 
   return (
@@ -91,17 +103,7 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
         total={state.totalBoulders || spec.boulders.length}
         elapsed={elapsed}
         columns={columns}
-        activePhase={(() => {
-          if (state.agentPanel.agent === 'gathering') return 'gathering';
-          if (state.agentPanel.agent === 'hades') return 'evaluating';
-          if (state.agentPanel.agent === 'retry') return 'retrying';
-          if (state.agentPanel.agent === 'sisyphus') {
-            if (state.agentPanel.producerStatus === 'thinking') return 'reasoning';
-            if (state.agentPanel.producerStatus === 'streaming') return 'writing';
-            return 'starting';
-          }
-          return null;
-        })()}
+        activePhase={activePhase}
       />
     </Box>
   );

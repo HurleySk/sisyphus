@@ -38,7 +38,7 @@ describe('uiReducer', () => {
       });
       const next = apply(withRun, {
         type: 'boulder:start',
-        payload: { name: 'section-1', index: 0, total: 2, maxAttempts: 4 },
+        payload: { name: 'section-1', index: 0, total: 2, maxAttempts: 4, description: 'test section', criteriaDescriptions: ['check A'] },
       });
       expect(next.activeBoulder).not.toBeNull();
       expect(next.activeBoulder?.name).toBe('section-1');
