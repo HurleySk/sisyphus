@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Static, Text, useWindowSize, useInput } from 'ink';
+import { Box, Static, Text, useWindowSize, useInput, useApp } from 'ink';
 import type { TypedEmitter, SisyphusEvents } from '../events.js';
 import type { Spec } from '../types.js';
 import type { AgentMode } from './state.js';
@@ -37,6 +37,7 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
   const agentElapsed = useElapsed(state.agentPanel.startedAt);
   const boulderElapsed = useElapsed(state.activeBoulder?.startedAt ?? null);
   const { columns, rows } = useWindowSize();
+  const { exit } = useApp();
   const STATUS_BAR_HEIGHT = 3;
   const KEY_HINT_HEIGHT = 1;
 
@@ -48,17 +49,15 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
       setExpanded(prev => !prev);
     }
     if (input === 'q') {
-      process.exit(0);
+      exit();
     }
   });
 
   React.useEffect(() => {
     if (expanded) return;
     const surplus = state.phaseHistory.length - MAX_VISIBLE_PHASES;
-    if (surplus > evictedCount) {
-      setEvictedCount(surplus);
-    }
-  }, [state.phaseHistory.length, evictedCount, expanded]);
+    setEvictedCount(prev => Math.max(prev, surplus));
+  }, [state.phaseHistory.length, expanded]);
 
   const evicted = state.phaseHistory.slice(0, evictedCount);
   const recentStart = expanded ? 0 : evictedCount;

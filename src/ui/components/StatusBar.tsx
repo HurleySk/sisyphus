@@ -111,9 +111,6 @@ export function computeLayout(
   }
 
   // Level 2: collapse completed to "N✓" + active + "+N pending"
-  const level2CompletedWidth = completed.length > 0 ? collapsedCompletedWidth(completed.length) : 0;
-  const level2Width = level2CompletedWidth + activeWidth + level1PendingWidth;
-
   return {
     completedBadges: [],
     collapsedCompleted: completed.length > 0 ? completed.length : null,
