@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Static, Text, useWindowSize } from 'ink';
+import { Box, Static, Text, useWindowSize, useInput } from 'ink';
 import type { TypedEmitter, SisyphusEvents } from '../events.js';
 import type { Spec } from '../types.js';
 import type { AgentMode } from './state.js';
@@ -38,22 +38,35 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
   const boulderElapsed = useElapsed(state.activeBoulder?.startedAt ?? null);
   const { columns, rows } = useWindowSize();
   const STATUS_BAR_HEIGHT = 3;
+  const KEY_HINT_HEIGHT = 1;
 
   const [evictedCount, setEvictedCount] = React.useState(0);
+  const [expanded, setExpanded] = React.useState(false);
+
+  useInput((input, _key) => {
+    if (input === 'v') {
+      setExpanded(prev => !prev);
+    }
+    if (input === 'q') {
+      process.exit(0);
+    }
+  });
 
   React.useEffect(() => {
+    if (expanded) return;
     const surplus = state.phaseHistory.length - MAX_VISIBLE_PHASES;
     if (surplus > evictedCount) {
       setEvictedCount(surplus);
     }
-  }, [state.phaseHistory.length, evictedCount]);
+  }, [state.phaseHistory.length, evictedCount, expanded]);
 
   const evicted = state.phaseHistory.slice(0, evictedCount);
-  const recent = state.phaseHistory.slice(evictedCount);
+  const recentStart = expanded ? 0 : evictedCount;
+  const recent = state.phaseHistory.slice(recentStart);
 
-  const visibleHistoryLines = recent.length + (evictedCount > 0 ? 1 : 0);
+  const visibleHistoryLines = recent.length + (!expanded && evictedCount > 0 ? 1 : 0);
   const headerLines = state.title ? 2 : 0;
-  const mainHeight = Math.max(rows - STATUS_BAR_HEIGHT - visibleHistoryLines - headerLines, 5);
+  const mainHeight = Math.max(rows - STATUS_BAR_HEIGHT - KEY_HINT_HEIGHT - visibleHistoryLines - headerLines, 5);
 
   const pendingNames = spec.boulders
     .filter(b =>
@@ -97,7 +110,7 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
           </Text>
         )}
       </Static>
-      {recent.length > 0 && evictedCount > 0 && (
+      {!expanded && recent.length > 0 && evictedCount > 0 && (
         <Text dimColor>  ↑ {evictedCount} earlier phases</Text>
       )}
       {recent.map((entry, i) => (
@@ -130,6 +143,7 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
         columns={columns}
         activePhase={activePhase}
       />
+      <Text dimColor>  v: {expanded ? 'collapse' : 'expand'} history · q: quit</Text>
     </Box>
   );
 }
