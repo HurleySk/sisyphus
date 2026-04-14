@@ -1,6 +1,6 @@
 # Sisyphus UI v3 — Agent-First Redesign
 
-**Status:** Draft
+**Status:** Implemented
 **Date:** 2026-04-14
 **Scope:** Full UX flow from Zeus conversational spec design through Ink run UI
 

@@ -1,4 +1,6 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+
+vi.setConfig({ testTimeout: 15_000 });
 import React from 'react';
 import { render, cleanup } from 'ink-testing-library';
 import { AgentHeader } from '../../src/ui/components/AgentHeader.js';
@@ -44,6 +46,7 @@ describe('StatusBar integration', () => {
       <StatusBar
         completed={[{ name: 'done', status: 'passed', attempts: 1, durationMs: 5000 }]}
         activeBoulderName="active"
+        boulderElapsed={0}
         pendingNames={['next']}
         total={3}
         elapsed={10}

@@ -1,0 +1,48 @@
+{
+  "title": "UI Test — Quick Boulder Run",
+  "description": "Minimal spec to test the Ink live progress UI",
+  "layer": "documentation",
+  "output": "output/ui-test.md",
+  "maxRetries": 1,
+  "boulders": [
+    {
+      "name": "greeting",
+      "description": "Write a short greeting section. Start with a top-level '# Welcome' heading, then write 3-4 sentences welcoming users to Sisyphus.",
+      "criteria": [
+        {
+          "check": "contains-heading",
+          "heading": "Welcome",
+          "level": 1,
+          "description": "Must have a '# Welcome' heading"
+        },
+        {
+          "check": "word-count-gte",
+          "min": 20,
+          "description": "At least 20 words"
+        }
+      ]
+    },
+    {
+      "name": "features",
+      "description": "Write a short features section listing 3 key features of a spec-driven engine in a markdown table.",
+      "criteria": [
+        {
+          "check": "contains-heading",
+          "heading": "Features",
+          "level": 2,
+          "description": "Must have a '## Features' heading"
+        },
+        {
+          "check": "contains-table",
+          "columns": ["Feature", "Description"],
+          "description": "Table with Feature and Description columns"
+        },
+        {
+          "check": "row-count-gte",
+          "min": 3,
+          "description": "At least 3 rows in the table"
+        }
+      ]
+    }
+  ]
+}

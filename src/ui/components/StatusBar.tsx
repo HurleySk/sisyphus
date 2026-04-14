@@ -7,9 +7,11 @@ import { formatElapsed, formatDuration } from '../format.js';
 interface StatusBarProps {
   completed: CompletedBoulder[];
   activeBoulderName: string | null;
+  boulderElapsed: number;
   pendingNames: string[];
   total: number;
   elapsed: number;
+  columns?: number;
 }
 
 function BoulderBadge({ name, icon, color, time }: { name: string; icon: string; color: string; time?: string }) {
@@ -20,12 +22,13 @@ function BoulderBadge({ name, icon, color, time }: { name: string; icon: string;
   );
 }
 
-export function StatusBar({ completed, activeBoulderName, pendingNames, total, elapsed }: StatusBarProps) {
+export function StatusBar({ completed, activeBoulderName, boulderElapsed, pendingNames, total, elapsed, columns }: StatusBarProps) {
   const completedCount = completed.length;
+  const separatorWidth = columns ?? 54;
 
   return (
     <Box flexDirection="column">
-      <Text dimColor>{'─'.repeat(54)}</Text>
+      <Text dimColor>{'─'.repeat(separatorWidth)}</Text>
       <Box>
         {completed.map((b) => {
           const icon = b.status === 'flagged' ? '✗' : '✓';
@@ -33,7 +36,7 @@ export function StatusBar({ completed, activeBoulderName, pendingNames, total, e
           return <BoulderBadge key={b.name} name={b.name} icon={icon} color={color} time={formatDuration(b.durationMs)} />;
         })}
         {activeBoulderName && (
-          <BoulderBadge name={activeBoulderName} icon="●" color="cyan" time={formatElapsed(elapsed)} />
+          <BoulderBadge name={activeBoulderName} icon="●" color="cyan" time={formatElapsed(boulderElapsed)} />
         )}
         {pendingNames.map((name) => (
           <BoulderBadge key={name} name={name} icon="○" color="gray" />

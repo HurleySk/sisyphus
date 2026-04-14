@@ -10,12 +10,15 @@ interface CompletionSummaryProps {
   artifactPath: string;
   reportPath: string;
   elapsed: number;
+  columns?: number;
 }
 
-function BoulderSummary({ boulder }: { boulder: CompletedBoulder }) {
+function BoulderSummary({ boulder, report }: { boulder: CompletedBoulder; report: RunReport }) {
   const icon = boulder.status === 'flagged' ? '✗' : '✓';
   const iconColor = boulder.status === 'flagged' ? 'red' : boulder.attempts > 1 ? 'yellow' : 'green';
   const attemptLabel = boulder.attempts === 1 ? '1 attempt' : `${boulder.attempts} attempts`;
+  const reportBoulder = report.boulders.find(b => b.name === boulder.name);
+  const wordCount = reportBoulder?.content?.split(/\s+/).filter(Boolean).length ?? 0;
 
   return (
     <Box flexDirection="column">
@@ -41,16 +44,22 @@ function BoulderSummary({ boulder }: { boulder: CompletedBoulder }) {
           ))}
         </Box>
       )}
-      {boulder.attempts > 1 && boulder.failures && boulder.failures.length > 0 && boulder.status === 'passed' && (
-        <Text dimColor>      attempt {boulder.attempts - 1}: ✗ {boulder.failures.map(f => f.criterion).join(', ')} → retried</Text>
+      {wordCount > 0 && (
+        <Text dimColor>      produced {wordCount} words</Text>
       )}
+      {boulder.retryHistory?.map((retry, i) => (
+        <Text key={i} dimColor>
+          {'      '}attempt {retry.attempt + 1}: ✗ {retry.failedChecks.join(', ')} → retried
+        </Text>
+      ))}
     </Box>
   );
 }
 
-export function CompletionSummary({ report, completedBoulders, artifactPath, reportPath, elapsed }: CompletionSummaryProps) {
+export function CompletionSummary({ report, completedBoulders, artifactPath, reportPath, elapsed, columns }: CompletionSummaryProps) {
   const passed = report.passedClean + report.passedAfterClimb;
   const flagged = report.flagged;
+  const separatorWidth = columns ?? 54;
 
   return (
     <Box flexDirection="column">
@@ -59,9 +68,9 @@ export function CompletionSummary({ report, completedBoulders, artifactPath, rep
         {' · '}{passed} passed{flagged > 0 ? <Text color="red"> · {flagged} flagged</Text> : ''}
         {' · '}{formatElapsed(elapsed)}
       </Text>
-      <Text dimColor>{'─'.repeat(54)}</Text>
+      <Text dimColor>{'─'.repeat(separatorWidth)}</Text>
       {completedBoulders.map((b) => (
-        <BoulderSummary key={b.name} boulder={b} />
+        <BoulderSummary key={b.name} boulder={b} report={report} />
       ))}
       <Text />
       <Text dimColor>  artifact → {artifactPath}</Text>

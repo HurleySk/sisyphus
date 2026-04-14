@@ -31,11 +31,14 @@ Core principle: Thanatos dispatches, never produces. Sisyphus and Hades are alwa
 
 ## Current State
 
-- **Engine built and tested** -- 130 tests, CLI working (`npx sisyphus run/validate`)
+- **Engine built and tested** -- 193 tests, CLI working (`npx sisyphus run/validate`)
 - Design spec: `docs/superpowers/specs/2026-04-10-sisyphus-generalized-engine-design.md`
 - Implementation plan: `docs/superpowers/plans/2026-04-10-sisyphus-engine-mvp.md`
+- UI v3 design spec: `docs/superpowers/specs/2026-04-14-sisyphus-ui-v3-agent-first-design.md`
+- UI v3 plan: `docs/superpowers/plans/2026-04-14-sisyphus-ui-v3-agent-first.md`
 - Documentation layer complete with structural checks (code-block-aware)
 - Lessons system operational (global + per-layer, budget-capped)
+- Ink-based terminal UI with agent-first layout, live streaming, per-boulder status bar
 
 ## Next Steps
 
@@ -46,7 +49,7 @@ Core principle: Thanatos dispatches, never produces. Sisyphus and Hades are alwa
 
 ## MVP Scope (Shipped)
 
-**Done**: CLI (`run`, `validate`, `--dry-run`), core engine (boulder loop), documentation layer (6 structural checks + assembler), analysis stack backend, lessons system, producer/evaluator spawning via stdin pipe, retry loop with climb feedback, artifact assembly, run report
+**Done**: CLI (`run`, `validate`, `--dry-run`), core engine (boulder loop), documentation layer (6 structural checks + assembler), analysis stack backend, lessons system, producer/evaluator spawning via stdin pipe, retry loop with climb feedback, artifact assembly, run report, Ink v3 agent-first UI (AgentPanel with mode switching, StatusBar with boulder badges, CompletionSummary with per-boulder results, live produce:stream support)
 
 **Next**: Zeus (T1 conversational architect), ADO/boomerang stack backends, foreach boulders, checkpoint mode, parallel boulders, watch mode, cost tracking
 

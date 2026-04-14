@@ -9,6 +9,8 @@ interface AgentHeaderProps {
   attempt: number;
   maxAttempts: number;
   elapsed: number;
+  checkCount?: number;
+  sourceCount?: number;
 }
 
 const agentConfig: Record<AgentMode, { label: string; color: string }> = {
@@ -20,12 +22,19 @@ const agentConfig: Record<AgentMode, { label: string; color: string }> = {
   done: { label: 'DONE', color: 'green' },
 };
 
-export function AgentHeader({ agent, boulderName, attempt, maxAttempts, elapsed }: AgentHeaderProps) {
+export function AgentHeader({ agent, boulderName, attempt, maxAttempts, elapsed, checkCount, sourceCount }: AgentHeaderProps) {
   const config = agentConfig[agent];
   if (agent === 'idle') return null;
 
   const showAttempt = agent === 'sisyphus' || agent === 'retry';
-  const sublabel = agent === 'hades' ? ' · evaluating' : '';
+  let sublabel = '';
+  if (agent === 'hades' && checkCount) {
+    sublabel = ` · evaluating ${checkCount} checks`;
+  } else if (agent === 'hades') {
+    sublabel = ' · evaluating';
+  } else if (agent === 'gathering' && sourceCount) {
+    sublabel = ` · ${sourceCount} sources`;
+  }
 
   return (
     <Box>
