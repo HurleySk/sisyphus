@@ -15,7 +15,10 @@ export async function renderUI(
   const emitter = new TypedEmitter<SisyphusEvents>();
   const startTime = Date.now();
 
-  const app = render(React.createElement(App, { emitter, spec, startTime, artifactPath, reportPath }));
+  const app = render(
+    React.createElement(App, { emitter, spec, startTime, artifactPath, reportPath }),
+    { incrementalRendering: true },
+  );
 
   const report = await runSpec(spec, { ...options, emitter });
 

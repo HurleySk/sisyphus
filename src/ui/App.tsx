@@ -4,7 +4,7 @@ import type { TypedEmitter, SisyphusEvents } from '../events.js';
 import type { Spec } from '../types.js';
 import type { AgentMode } from './state.js';
 import { useEngine } from './hooks/useEngine.js';
-import { useElapsed } from './hooks/useElapsed.js';
+import { useTick, elapsedSeconds } from './hooks/useElapsed.js';
 import { AgentPanel } from './components/AgentPanel.js';
 import { CompletionSummary } from './components/CompletionSummary.js';
 import { StatusBar } from './components/StatusBar.js';
@@ -33,15 +33,16 @@ export interface AppProps {
 
 export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppProps) {
   const state = useEngine(emitter);
-  const elapsed = useElapsed(startTime);
-  const agentElapsed = useElapsed(state.agentPanel.startedAt);
-  const boulderElapsed = useElapsed(state.activeBoulder?.startedAt ?? null);
+  useTick(); // single 1s interval drives all elapsed values
+  const elapsed = startTime ? elapsedSeconds(startTime) : 0;
+  const agentElapsed = state.agentPanel.startedAt ? elapsedSeconds(state.agentPanel.startedAt) : 0;
+  const boulderElapsed = state.activeBoulder?.startedAt ? elapsedSeconds(state.activeBoulder.startedAt) : 0;
   const { columns, rows } = useWindowSize();
   const { exit } = useApp();
   const STATUS_BAR_HEIGHT = 3;
   const KEY_HINT_HEIGHT = 1;
 
-  const [evictedCount, setEvictedCount] = React.useState(0);
+  const evictedRef = React.useRef(0);
   const [expanded, setExpanded] = React.useState(false);
 
   useInput((input, _key) => {
@@ -53,11 +54,14 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
     }
   });
 
-  React.useEffect(() => {
-    if (expanded) return;
+  // Synchronous eviction — no useEffect, no two-phase render flicker
+  if (!expanded) {
     const surplus = state.phaseHistory.length - MAX_VISIBLE_PHASES;
-    setEvictedCount(prev => Math.max(prev, surplus));
-  }, [state.phaseHistory.length, expanded]);
+    if (surplus > evictedRef.current) {
+      evictedRef.current = surplus;
+    }
+  }
+  const evictedCount = evictedRef.current;
 
   const evicted = state.phaseHistory.slice(0, evictedCount);
   const recentStart = expanded ? 0 : evictedCount;

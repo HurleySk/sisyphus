@@ -155,6 +155,7 @@ export type UIAction =
   | { type: 'stack:end'; payload?: StackEndPayload }
   | { type: 'produce:start'; payload: ProduceStartPayload }
   | { type: 'produce:stream'; payload: ProduceStreamPayload }
+  | { type: 'produce:stream-batch'; payload: { lines: string[] } }
   | { type: 'produce:thinking'; payload: ProduceThinkingPayload }
   | { type: 'produce:file-change'; payload: ProduceFileChangePayload }
   | { type: 'produce:diff'; payload: ProduceDiffPayload }
@@ -357,6 +358,20 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
           producerStatus: 'streaming',
           producerStatusStartedAt: isTransition ? Date.now() : state.agentPanel.producerStatusStartedAt,
           streamingLines: [...state.agentPanel.streamingLines, action.payload.line],
+        },
+      };
+    }
+
+    case 'produce:stream-batch': {
+      if (!state.activeBoulder) return state;
+      const isTransition = state.agentPanel.producerStatus !== 'streaming';
+      return {
+        ...state,
+        agentPanel: {
+          ...state.agentPanel,
+          producerStatus: 'streaming',
+          producerStatusStartedAt: isTransition ? Date.now() : state.agentPanel.producerStatusStartedAt,
+          streamingLines: [...state.agentPanel.streamingLines, ...action.payload.lines],
         },
       };
     }

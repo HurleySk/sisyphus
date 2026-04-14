@@ -4,7 +4,7 @@ import Spinner from 'ink-spinner';
 import type { AgentPanelState } from '../state.js';
 import type { CheckResult } from '../../types.js';
 import { AgentHeader } from './AgentHeader.js';
-import { useElapsed } from '../hooks/useElapsed.js';
+import { elapsedSeconds } from '../hooks/useElapsed.js';
 import { formatElapsed } from '../format.js';
 
 interface AgentPanelProps {
@@ -40,7 +40,8 @@ function GatheringBody({ panel, viewportHeight }: { panel: AgentPanelState; view
 }
 
 function SisyphusBody({ panel, viewportHeight }: { panel: AgentPanelState; viewportHeight: number }) {
-  const statusElapsed = useElapsed(panel.producerStatusStartedAt);
+  // No useElapsed here — parent App ticks once/sec via useTick(), which re-renders this component
+  const statusElapsed = panel.producerStatusStartedAt !== null ? elapsedSeconds(panel.producerStatusStartedAt) : 0;
   const elapsedLabel = panel.producerStatusStartedAt !== null ? ` ${formatElapsed(statusElapsed)}` : '';
 
   if (panel.producerStatus === 'idle' || panel.producerStatus === 'thinking') {
