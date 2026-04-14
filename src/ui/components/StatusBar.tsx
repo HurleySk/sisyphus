@@ -28,7 +28,7 @@ export function StatusBar({ completed, activeBoulderName, boulderElapsed, pendin
 
   return (
     <Box flexDirection="column">
-      <Text dimColor>{'─'.repeat(separatorWidth)}</Text>
+      <Text dimColor>{'━'.repeat(separatorWidth)}</Text>
       <Box>
         {completed.map((b) => {
           const icon = b.status === 'flagged' ? '✗' : '✓';

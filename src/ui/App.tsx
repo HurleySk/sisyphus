@@ -48,8 +48,19 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
 
   const isComplete = state.report !== null;
 
+  const headerSeparator = '╌'.repeat(columns ?? 54);
+
   return (
     <Box flexDirection="column">
+      {state.title && (
+        <>
+          <Text>
+            <Text bold color="white">{state.title}</Text>
+            <Text dimColor> · {state.layer} · {state.totalBoulders} boulder{state.totalBoulders !== 1 ? 's' : ''}</Text>
+          </Text>
+          <Text dimColor>{headerSeparator}</Text>
+        </>
+      )}
       <Static items={state.phaseHistory}>
         {(entry, i) => (
           <Text key={i} dimColor>

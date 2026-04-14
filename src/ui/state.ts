@@ -292,7 +292,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         historyAdditions.push({
           agent: 'gathering',
           boulderName: resolvedName,
-          summary: `${fileCount} file${fileCount !== 1 ? 's' : ''} (${totalLines} lines)`,
+          summary: fileCount === 0 ? 'no sources' : `${fileCount} file${fileCount !== 1 ? 's' : ''} (${totalLines} lines)`,
         });
       }
 

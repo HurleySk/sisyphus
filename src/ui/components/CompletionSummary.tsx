@@ -48,7 +48,7 @@ function BoulderSummary({ boulder, report }: { boulder: CompletedBoulder; report
         <Text dimColor>      produced {wordCount} words</Text>
       )}
       {boulder.retryHistory?.map((retry, i) => (
-        <Text key={i} dimColor>
+        <Text key={i} color="yellow">
           {'      '}attempt {retry.attempt + 1}: ✗ {retry.failedChecks.join(', ')} → retried
         </Text>
       ))}
@@ -61,6 +61,12 @@ export function CompletionSummary({ report, completedBoulders, artifactPath, rep
   const flagged = report.flagged;
   const separatorWidth = columns ?? 54;
 
+  const sortedBoulders = [...completedBoulders].sort((a, b) => {
+    if (a.status === 'flagged' && b.status !== 'flagged') return -1;
+    if (a.status !== 'flagged' && b.status === 'flagged') return 1;
+    return 0;
+  });
+
   return (
     <Box flexDirection="column">
       <Text>
@@ -68,9 +74,12 @@ export function CompletionSummary({ report, completedBoulders, artifactPath, rep
         {' · '}{passed} passed{flagged > 0 ? <Text color="red"> · {flagged} flagged</Text> : ''}
         {' · '}{formatElapsed(elapsed)}
       </Text>
-      <Text dimColor>{'─'.repeat(separatorWidth)}</Text>
-      {completedBoulders.map((b) => (
-        <BoulderSummary key={b.name} boulder={b} report={report} />
+      <Text dimColor>{'━'.repeat(separatorWidth)}</Text>
+      {sortedBoulders.map((b, i) => (
+        <React.Fragment key={b.name}>
+          {i > 0 && <Text />}
+          <BoulderSummary boulder={b} report={report} />
+        </React.Fragment>
       ))}
       <Text />
       <Text dimColor>  artifact → {artifactPath}</Text>
