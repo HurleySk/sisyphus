@@ -9,6 +9,8 @@ import { AgentPanel } from './components/AgentPanel.js';
 import { CompletionSummary } from './components/CompletionSummary.js';
 import { StatusBar } from './components/StatusBar.js';
 
+export const MAX_VISIBLE_PHASES = 6;
+
 function agentColor(agent: AgentMode): string {
   const colors: Record<AgentMode, string> = {
     idle: 'gray',
@@ -36,8 +38,22 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
   const boulderElapsed = useElapsed(state.activeBoulder?.startedAt ?? null);
   const { columns, rows } = useWindowSize();
   const STATUS_BAR_HEIGHT = 3;
-  const staticLines = state.phaseHistory.length;
-  const mainHeight = Math.max(rows - STATUS_BAR_HEIGHT - staticLines, 5);
+
+  const [evictedCount, setEvictedCount] = React.useState(0);
+
+  React.useEffect(() => {
+    const surplus = state.phaseHistory.length - MAX_VISIBLE_PHASES;
+    if (surplus > evictedCount) {
+      setEvictedCount(surplus);
+    }
+  }, [state.phaseHistory.length, evictedCount]);
+
+  const evicted = state.phaseHistory.slice(0, evictedCount);
+  const recent = state.phaseHistory.slice(evictedCount);
+
+  const visibleHistoryLines = recent.length + (evictedCount > 0 ? 1 : 0);
+  const headerLines = state.title ? 2 : 0;
+  const mainHeight = Math.max(rows - STATUS_BAR_HEIGHT - visibleHistoryLines - headerLines, 5);
 
   const pendingNames = spec.boulders
     .filter(b =>
@@ -73,7 +89,7 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
           <Text dimColor>{headerSeparator}</Text>
         </>
       )}
-      <Static items={state.phaseHistory}>
+      <Static items={evicted}>
         {(entry, i) => (
           <Text key={i} dimColor>
             <Text color={agentColor(entry.agent)}>{entry.agent.toUpperCase()}</Text>
@@ -81,6 +97,15 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
           </Text>
         )}
       </Static>
+      {recent.length > 0 && evictedCount > 0 && (
+        <Text dimColor>  ↑ {evictedCount} earlier phases</Text>
+      )}
+      {recent.map((entry, i) => (
+        <Text key={evictedCount + i} dimColor>
+          <Text color={agentColor(entry.agent)}>{entry.agent.toUpperCase()}</Text>
+          {' · '}{entry.boulderName}{' · '}{entry.summary}
+        </Text>
+      ))}
       <Box flexDirection="column" flexGrow={1}>
         {isComplete ? (
           <CompletionSummary
