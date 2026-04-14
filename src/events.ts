@@ -77,6 +77,10 @@ export interface ProduceStreamPayload {
   line: string;
 }
 
+export interface ProduceThinkingPayload {
+  boulderName: string;
+}
+
 export interface EvaluateStartPayload {
   boulderName: string;
   attempt: number;
@@ -117,6 +121,7 @@ export interface SisyphusEvents extends Record<string, unknown> {
   'produce:diff': ProduceDiffPayload;
   'produce:end': ProduceEndPayload;
   'produce:stream': ProduceStreamPayload;
+  'produce:thinking': ProduceThinkingPayload;
   'evaluate:start': EvaluateStartPayload;
   'evaluate:structural': EvaluateResultsPayload;
   'evaluate:custom': EvaluateResultsPayload;
