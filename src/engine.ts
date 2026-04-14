@@ -104,7 +104,28 @@ export async function runSpec(
           fileWatcher.start();
         }
 
-        lastOutput = await start({ prompt: producerPrompt, model: 'sonnet' });
+        let streamBuf = '';
+        lastOutput = await start({
+          prompt: producerPrompt,
+          model: 'sonnet',
+          onStream: emitter ? (event) => {
+            if (event.type === 'thinking') {
+              emitter.emit('produce:thinking', { boulderName: boulder.name });
+            } else if (event.type === 'text') {
+              streamBuf += event.text;
+              const parts = streamBuf.split('\n');
+              streamBuf = parts.pop()!;
+              for (const line of parts) {
+                emitter.emit('produce:stream', { boulderName: boulder.name, line });
+              }
+            }
+          } : undefined,
+        });
+
+        // Flush remaining buffer
+        if (emitter && streamBuf.length > 0) {
+          emitter.emit('produce:stream', { boulderName: boulder.name, line: streamBuf });
+        }
 
         // Stop file watcher + emit diff
         if (fileWatcher) {
