@@ -256,6 +256,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         activeBoulder: null,
         completedBoulders: [...state.completedBoulders, completed],
         workerPanel: { ...defaultWorkerPanel },
+        agentPanel: { ...defaultAgentPanel },
       };
     }
 
