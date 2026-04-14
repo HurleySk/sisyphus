@@ -5,6 +5,9 @@ import { AgentHeader } from '../../src/ui/components/AgentHeader.js';
 import { AgentPanel } from '../../src/ui/components/AgentPanel.js';
 import type { AgentPanelState } from '../../src/ui/state.js';
 import { defaultAgentPanel } from '../../src/ui/state.js';
+import { CompletionSummary } from '../../src/ui/components/CompletionSummary.js';
+import type { RunReport } from '../../src/types.js';
+import type { CompletedBoulder } from '../../src/ui/state.js';
 
 afterEach(() => { cleanup(); });
 
@@ -121,5 +124,80 @@ describe('AgentPanel', () => {
   it('renders idle state as waiting message', () => {
     const out = cap(<AgentPanel panel={defaultAgentPanel} elapsed={0} />);
     expect(out).toContain('waiting');
+  });
+});
+
+describe('CompletionSummary (v3)', () => {
+  it('renders per-boulder check results', () => {
+    const report: RunReport = {
+      title: 'Test', startedAt: '', completedAt: '',
+      boulders: [
+        { name: 'greeting', content: 'Hello world', attempts: 1, status: 'passed' },
+      ],
+      totalBoulders: 1, passedClean: 1, passedAfterClimb: 0, flagged: 0,
+    };
+    const completed: CompletedBoulder[] = [{
+      name: 'greeting', status: 'passed', attempts: 1, durationMs: 9000,
+      results: [
+        { criterion: 'contains-heading', pass: true, message: 'found' },
+        { criterion: 'word-count-gte', pass: true, message: '47 words' },
+      ],
+    }];
+    const out = cap(
+      <CompletionSummary report={report} completedBoulders={completed}
+        artifactPath="output/test.md" reportPath="output/test-report.json" elapsed={9} />
+    );
+    expect(out).toContain('DONE');
+    expect(out).toContain('1 passed');
+    expect(out).toContain('greeting');
+    expect(out).toContain('contains-heading');
+    expect(out).toContain('word-count-gte');
+    expect(out).toContain('output/test.md');
+  });
+
+  it('shows retry history for climbed boulders', () => {
+    const report: RunReport = {
+      title: 'Test', startedAt: '', completedAt: '',
+      boulders: [
+        { name: 'features', content: 'table', attempts: 2, status: 'passed' },
+      ],
+      totalBoulders: 1, passedClean: 0, passedAfterClimb: 1, flagged: 0,
+    };
+    const completed: CompletedBoulder[] = [{
+      name: 'features', status: 'passed', attempts: 2, durationMs: 19000,
+      results: [
+        { criterion: 'contains-heading', pass: true, message: 'found' },
+        { criterion: 'row-count-gte', pass: true, message: '3 rows' },
+      ],
+      failures: [{ criterion: 'row-count-gte', pass: false, message: '2 rows (min 3)' }],
+    }];
+    const out = cap(
+      <CompletionSummary report={report} completedBoulders={completed}
+        artifactPath="output/test.md" reportPath="output/test-report.json" elapsed={19} />
+    );
+    expect(out).toContain('2 attempts');
+    expect(out).toContain('row-count-gte');
+  });
+
+  it('shows flagged boulders with failing checks', () => {
+    const report: RunReport = {
+      title: 'Test', startedAt: '', completedAt: '',
+      boulders: [
+        { name: 'broken', content: '', attempts: 3, status: 'flagged',
+          failures: [{ criterion: 'word-count-gte', pass: false, message: '5 words (min 50)' }] },
+      ],
+      totalBoulders: 1, passedClean: 0, passedAfterClimb: 0, flagged: 1,
+    };
+    const completed: CompletedBoulder[] = [{
+      name: 'broken', status: 'flagged', attempts: 3, durationMs: 30000,
+      failures: [{ criterion: 'word-count-gte', pass: false, message: '5 words (min 50)' }],
+    }];
+    const out = cap(
+      <CompletionSummary report={report} completedBoulders={completed}
+        artifactPath="output/test.md" reportPath="output/test-report.json" elapsed={30} />
+    );
+    expect(out).toContain('✗');
+    expect(out).toContain('broken');
+    expect(out).toContain('1 flagged');
   });
 });
