@@ -15,6 +15,7 @@ const EVENT_NAMES: Array<keyof SisyphusEvents & string> = [
   'produce:start',
   'produce:file-change',
   'produce:diff',
+  'produce:stream',
   'produce:end',
   'evaluate:start',
   'evaluate:structural',
