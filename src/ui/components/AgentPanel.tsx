@@ -8,29 +8,62 @@ import { AgentHeader } from './AgentHeader.js';
 interface AgentPanelProps {
   panel: AgentPanelState;
   elapsed: number;
+  mainHeight?: number;
+  columns?: number;
 }
 
-function GatheringBody({ panel }: { panel: AgentPanelState }) {
+function GatheringBody({ panel, viewportHeight }: { panel: AgentPanelState; viewportHeight: number }) {
+  const totalLines = panel.stackFiles.reduce((sum, f) => sum + f.lines, 0);
+  const budget = Math.max(viewportHeight - 2, 3); // reserve for spinner + summary
+  const hasMore = panel.stackFiles.length > budget;
+  const maxItems = hasMore ? budget - 1 : budget;
+  const visibleFiles = panel.stackFiles.slice(-maxItems);
+
   return (
     <Box flexDirection="column">
-      {panel.stackFiles.map((f, i) => (
+      {hasMore && <Text dimColor>  ↑ {panel.stackFiles.length - maxItems} more files</Text>}
+      {visibleFiles.map((f, i) => (
         <Text key={i}>
-          {'  '}reading {f.path}
+          {'  '}<Text color="green">✓</Text> {f.path}
           <Text dimColor>{' '.repeat(Math.max(1, 40 - f.path.length))}{f.lines} lines</Text>
-          {f.summarized && <Text dimColor> · summarized</Text>}
+          {f.summarized && <Text color="yellow"> · summarized</Text>}
         </Text>
       ))}
-      {panel.stackFiles.length === 0 && (
-        <Text>  <Spinner type="dots" /> gathering sources...</Text>
+      <Text>  <Spinner type="dots" /> gathering sources...</Text>
+      {panel.stackFiles.length > 0 && (
+        <Text dimColor>  {panel.stackFiles.length} files · {totalLines} lines total</Text>
       )}
     </Box>
   );
 }
 
-function SisyphusBody({ panel }: { panel: AgentPanelState }) {
+function SisyphusBody({ panel, viewportHeight }: { panel: AgentPanelState; viewportHeight: number }) {
+  if (panel.producerStatus === 'idle') {
+    return (
+      <Box flexDirection="column">
+        <Text>  <Spinner type="dots" /> starting...</Text>
+      </Box>
+    );
+  }
+
+  if (panel.producerStatus === 'thinking') {
+    return (
+      <Box flexDirection="column">
+        <Text>  <Spinner type="dots" /> reasoning...</Text>
+      </Box>
+    );
+  }
+
+  // Streaming — show lines with viewport windowing
+  const budget = Math.max(viewportHeight - 2, 3);
+  const hasMore = panel.streamingLines.length > budget;
+  const maxLines = hasMore ? budget - 1 : budget;
+  const visibleLines = panel.streamingLines.slice(-maxLines);
+
   return (
     <Box flexDirection="column">
-      {panel.streamingLines.map((line, i) => (
+      {hasMore && <Text dimColor>  ↑ {panel.streamingLines.length - maxLines} more lines</Text>}
+      {visibleLines.map((line, i) => (
         <Text key={i}>  {line}</Text>
       ))}
       <Text>
@@ -50,26 +83,41 @@ function ResultLine({ result }: { result: CheckResult }) {
   );
 }
 
-function HadesBody({ panel }: { panel: AgentPanelState }) {
+function HadesBody({ panel, viewportHeight }: { panel: AgentPanelState; viewportHeight: number }) {
   const structural = panel.structuralResults ?? [];
   const custom = panel.customResults ?? [];
-  const waitingForCustom = structural.length > 0 && custom.length === 0;
+  const allResults = [...structural, ...custom];
+  const totalReceived = allResults.length;
+  const allDone = panel.checkCount > 0 && totalReceived >= panel.checkCount;
+  const showSpinner = !allDone;
+  const budget = Math.max(viewportHeight - (showSpinner ? 1 : 0), 3); // reserve for spinner if showing
+  const hasMore = allResults.length > budget;
+  const maxItems = hasMore ? budget - 1 : budget; // reserve 1 line for indicator when overflowing
+  const visibleResults = allResults.slice(-maxItems);
+
   return (
     <Box flexDirection="column">
-      {structural.map((r, i) => <ResultLine key={`s-${i}`} result={r} />)}
-      {waitingForCustom && (
-        <Text>  <Spinner type="dots" /> evaluating custom criteria...</Text>
+      {hasMore && <Text dimColor>  ↑ {allResults.length - maxItems} more checks</Text>}
+      {visibleResults.map((r, i) => <ResultLine key={i} result={r} />)}
+      {showSpinner && (
+        <Text>  <Spinner type="dots" /> {structural.length > 0 ? 'evaluating custom criteria...' : 'evaluating...'}</Text>
       )}
-      {custom.map((r, i) => <ResultLine key={`c-${i}`} result={r} />)}
     </Box>
   );
 }
 
-function RetryBody({ panel }: { panel: AgentPanelState }) {
+function RetryBody({ panel, viewportHeight }: { panel: AgentPanelState; viewportHeight: number }) {
   const lastRetry = panel.retryHistory[panel.retryHistory.length - 1];
+  const checks = lastRetry?.failedChecks ?? [];
+  const budget = Math.max(viewportHeight - 3, 2); // reserve for feedback, blank, restarting lines
+  const hasMore = checks.length > budget;
+  const maxItems = hasMore ? budget - 1 : budget; // reserve 1 line for indicator when overflowing
+  const visibleChecks = checks.slice(-maxItems);
+
   return (
     <Box flexDirection="column">
-      {lastRetry?.failedChecks.map((check, i) => (
+      {hasMore && <Text dimColor>  ↑ {checks.length - maxItems} more checks</Text>}
+      {visibleChecks.map((check, i) => (
         <Text key={i} color="red">  ✗ {check}</Text>
       ))}
       {panel.climbFeedback && (
@@ -81,25 +129,32 @@ function RetryBody({ panel }: { panel: AgentPanelState }) {
   );
 }
 
-export function AgentPanel({ panel, elapsed }: AgentPanelProps) {
+export function AgentPanel({ panel, elapsed, mainHeight, columns }: AgentPanelProps) {
+  const separatorWidth = columns ?? 54;
+  const bodyHeight = (mainHeight ?? 20) - 2; // subtract header (1 line) + separator (1 line)
+
   if (panel.agent === 'idle') {
     return <Text dimColor>waiting for dispatch...</Text>;
   }
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" height={mainHeight}>
       <AgentHeader
         agent={panel.agent}
         boulderName={panel.boulderName}
         attempt={panel.attempt}
         maxAttempts={panel.maxAttempts}
         elapsed={elapsed}
+        checkCount={panel.checkCount}
+        sourceCount={panel.sourceCount}
       />
-      <Text dimColor>{'─'.repeat(54)}</Text>
-      {panel.agent === 'gathering' && <GatheringBody panel={panel} />}
-      {panel.agent === 'sisyphus' && <SisyphusBody panel={panel} />}
-      {panel.agent === 'hades' && <HadesBody panel={panel} />}
-      {panel.agent === 'retry' && <RetryBody panel={panel} />}
+      <Text dimColor>{'─'.repeat(separatorWidth)}</Text>
+      <Box flexDirection="column" flexGrow={1} overflow="hidden">
+        {panel.agent === 'gathering' && <GatheringBody panel={panel} viewportHeight={bodyHeight} />}
+        {panel.agent === 'sisyphus' && <SisyphusBody panel={panel} viewportHeight={bodyHeight} />}
+        {panel.agent === 'hades' && <HadesBody panel={panel} viewportHeight={bodyHeight} />}
+        {panel.agent === 'retry' && <RetryBody panel={panel} viewportHeight={bodyHeight} />}
+      </Box>
     </Box>
   );
 }

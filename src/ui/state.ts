@@ -12,6 +12,7 @@ import type {
   ProduceFileChangePayload,
   ProduceDiffPayload,
   ProduceEndPayload,
+  ProduceThinkingPayload,
   EvaluateStartPayload,
   EvaluateResultsPayload,
   EvaluateEndPayload,
@@ -38,6 +39,12 @@ export interface FileChangeEntry {
 
 export type AgentMode = 'idle' | 'gathering' | 'sisyphus' | 'hades' | 'retry' | 'done';
 
+export interface PhaseHistoryEntry {
+  agent: AgentMode;
+  boulderName: string;
+  summary: string;
+}
+
 export interface RetryRecord {
   attempt: number;
   failedChecks: string[];
@@ -55,6 +62,9 @@ export interface AgentPanelState {
   customResults: CheckResult[] | null;
   climbFeedback: string | undefined;
   retryHistory: RetryRecord[];
+  checkCount: number;
+  sourceCount: number;
+  producerStatus: 'idle' | 'thinking' | 'streaming';
 }
 
 export const defaultAgentPanel: AgentPanelState = {
@@ -69,6 +79,9 @@ export const defaultAgentPanel: AgentPanelState = {
   customResults: null,
   climbFeedback: undefined,
   retryHistory: [],
+  checkCount: 0,
+  sourceCount: 0,
+  producerStatus: 'idle',
 };
 
 // --- Active boulder state ---
@@ -97,6 +110,7 @@ export interface CompletedBoulder {
   durationMs: number;
   failures?: CheckResult[];
   results?: CheckResult[];
+  retryHistory?: RetryRecord[];
 }
 
 // --- Top-level UI state ---
@@ -109,6 +123,7 @@ export interface UIState {
   completedBoulders: CompletedBoulder[];
   report: RunReport | null;
   agentPanel: AgentPanelState;
+  phaseHistory: PhaseHistoryEntry[];
 }
 
 export const initialUIState: UIState = {
@@ -119,6 +134,7 @@ export const initialUIState: UIState = {
   completedBoulders: [],
   report: null,
   agentPanel: { ...defaultAgentPanel },
+  phaseHistory: [],
 };
 
 // --- Actions ---
@@ -133,6 +149,7 @@ export type UIAction =
   | { type: 'stack:end'; payload?: StackEndPayload }
   | { type: 'produce:start'; payload: ProduceStartPayload }
   | { type: 'produce:stream'; payload: ProduceStreamPayload }
+  | { type: 'produce:thinking'; payload: ProduceThinkingPayload }
   | { type: 'produce:file-change'; payload: ProduceFileChangePayload }
   | { type: 'produce:diff'; payload: ProduceDiffPayload }
   | { type: 'produce:end'; payload?: ProduceEndPayload }
@@ -193,12 +210,32 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
     case 'boulder:end': {
       const { name, status, attempts, durationMs, failures } = action.payload;
       const results = state.activeBoulder?.results ?? undefined;
-      const completed: CompletedBoulder = { name, status, attempts, durationMs, failures, results };
+      const retryHistory = state.agentPanel.retryHistory;
+      const completed: CompletedBoulder = {
+        name, status, attempts, durationMs, failures, results,
+        retryHistory: retryHistory.length > 0 ? retryHistory : undefined,
+      };
+
+      // Append hades evaluation summary
+      const structural = state.agentPanel.structuralResults ?? [];
+      const custom = state.agentPanel.customResults ?? [];
+      const allChecks = [...structural, ...custom];
+      const passedCount = allChecks.filter(c => c.pass).length;
+      const totalChecks = allChecks.length;
+      const hadesEntry: PhaseHistoryEntry = {
+        agent: 'hades',
+        boulderName: name,
+        summary: totalChecks > 0
+          ? `${passedCount}/${totalChecks} checks passed`
+          : 'evaluation complete',
+      };
+
       return {
         ...state,
         activeBoulder: null,
         completedBoulders: [...state.completedBoulders, completed],
         agentPanel: { ...defaultAgentPanel },
+        phaseHistory: [...state.phaseHistory, hadesEntry],
       };
     }
 
@@ -212,6 +249,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
           agent: 'gathering',
           boulderName: state.activeBoulder?.name ?? null,
           startedAt: Date.now(),
+          sourceCount: action.payload?.sourceCount ?? 0,
         },
       };
     }
@@ -237,16 +275,27 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
     }
 
     case 'stack:end': {
-      if (!state.activeBoulder) return state;
-      return {
-        ...state,
-        activeBoulder: state.activeBoulder,
-      };
+      return state;
     }
 
     case 'produce:start': {
       if (!state.activeBoulder) return state;
       const { attempt, climbFeedback, boulderName } = action.payload;
+      const resolvedName = boulderName ?? state.activeBoulder?.name ?? 'unknown';
+
+      // Append gathering phase summary if transitioning from gathering
+      const historyAdditions: PhaseHistoryEntry[] = [];
+      if (state.agentPanel.agent === 'gathering') {
+        const files = state.agentPanel.stackFiles;
+        const fileCount = files.length;
+        const totalLines = files.reduce((sum, f) => sum + f.lines, 0);
+        historyAdditions.push({
+          agent: 'gathering',
+          boulderName: resolvedName,
+          summary: `${fileCount} file${fileCount !== 1 ? 's' : ''} (${totalLines} lines)`,
+        });
+      }
+
       return {
         ...state,
         activeBoulder: {
@@ -260,12 +309,24 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         agentPanel: {
           ...defaultAgentPanel,
           agent: 'sisyphus',
-          boulderName: boulderName ?? state.activeBoulder?.name ?? null,
+          boulderName: resolvedName,
           attempt: action.payload.attempt,
           maxAttempts: action.payload.maxAttempts,
           startedAt: Date.now(),
           climbFeedback: action.payload.climbFeedback,
           retryHistory: state.agentPanel.retryHistory,
+        },
+        phaseHistory: [...state.phaseHistory, ...historyAdditions],
+      };
+    }
+
+    case 'produce:thinking': {
+      if (!state.activeBoulder) return state;
+      return {
+        ...state,
+        agentPanel: {
+          ...state.agentPanel,
+          producerStatus: 'thinking',
         },
       };
     }
@@ -276,6 +337,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         ...state,
         agentPanel: {
           ...state.agentPanel,
+          producerStatus: 'streaming',
           streamingLines: [...state.agentPanel.streamingLines, action.payload.line],
         },
       };
@@ -308,15 +370,20 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
     }
 
     case 'produce:end': {
-      if (!state.activeBoulder) return state;
-      return {
-        ...state,
-        activeBoulder: state.activeBoulder,
-      };
+      return state;
     }
 
     case 'evaluate:start': {
       if (!state.activeBoulder) return state;
+      const bName = state.agentPanel.boulderName ?? state.activeBoulder.name;
+      const lineCount = state.agentPanel.streamingLines.length;
+      const attemptNum = state.agentPanel.attempt;
+      const evalPayload = action.payload as EvaluateStartPayload | undefined;
+      const sisyphusEntry: PhaseHistoryEntry = {
+        agent: 'sisyphus',
+        boulderName: bName,
+        summary: `attempt ${attemptNum + 1} \u00b7 ${lineCount} lines`,
+      };
       return {
         ...state,
         activeBoulder: {
@@ -327,13 +394,16 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
           results: null,
         },
         agentPanel: {
-          ...state.agentPanel,
+          ...defaultAgentPanel,
           agent: 'hades',
+          boulderName: state.agentPanel.boulderName,
+          attempt: state.agentPanel.attempt,
+          maxAttempts: state.agentPanel.maxAttempts,
           startedAt: Date.now(),
-          streamingLines: [],
-          structuralResults: null,
-          customResults: null,
+          retryHistory: state.agentPanel.retryHistory,
+          checkCount: (evalPayload?.structuralCount ?? 0) + (evalPayload?.customCount ?? 0),
         },
+        phaseHistory: [...state.phaseHistory, sisyphusEntry],
       };
     }
 
@@ -389,6 +459,21 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       const failureSummary = action.payload?.failures
         ?.map((f) => f.message)
         .join(', ') ?? 'evaluation failed';
+
+      // Append hades failed evaluation summary
+      const climbStructural = state.agentPanel.structuralResults ?? [];
+      const climbCustom = state.agentPanel.customResults ?? [];
+      const climbAllChecks = [...climbStructural, ...climbCustom];
+      const climbFailedCount = climbAllChecks.filter(c => !c.pass).length;
+      const climbTotalChecks = climbAllChecks.length;
+      const climbHadesEntry: PhaseHistoryEntry = {
+        agent: 'hades',
+        boulderName: state.activeBoulder.name,
+        summary: climbTotalChecks > 0
+          ? `${climbFailedCount}/${climbTotalChecks} checks failed \u2192 retrying`
+          : 'evaluation failed \u2192 retrying',
+      };
+
       return {
         ...state,
         activeBoulder: state.activeBoulder,
@@ -404,6 +489,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
             },
           ],
         },
+        phaseHistory: [...state.phaseHistory, climbHadesEntry],
       };
     }
 
