@@ -277,6 +277,18 @@ describe('stream-json mode', () => {
     expect(args).not.toContain('--include-partial-messages');
   });
 
+  it('rejects on non-zero exit when no result event received', async () => {
+    const proc = makeProc();
+    mockSpawn.mockReturnValue(proc);
+
+    const promise = start({ prompt: 'Write something', onStream: () => {} });
+
+    proc.stderr.emit('data', Buffer.from('process crashed'));
+    proc.emit('close', 1);
+
+    await expect(promise).rejects.toThrow('claude exited with code 1');
+  });
+
   it('onLine still works when onStream is not provided', async () => {
     const proc = makeProc();
     mockSpawn.mockReturnValue(proc);

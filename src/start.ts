@@ -2,8 +2,7 @@ import { spawn } from 'child_process';
 
 export type StreamEvent =
   | { type: 'thinking' }
-  | { type: 'text'; text: string }
-  | { type: 'done'; result: string };
+  | { type: 'text'; text: string };
 
 export interface StartOptions {
   prompt: string;
@@ -61,7 +60,6 @@ export async function start(options: StartOptions): Promise<string> {
 
     proc.stdout.on('data', (data: Buffer) => {
       const chunk = data.toString();
-      stdout += chunk;
 
       if (useStreamJson) {
         lineBuf += chunk;
@@ -74,12 +72,15 @@ export async function start(options: StartOptions): Promise<string> {
             streamResult = result;
           }
         }
-      } else if (options.onLine) {
-        lineBuf += chunk;
-        const parts = lineBuf.split('\n');
-        lineBuf = parts.pop()!;
-        for (const line of parts) {
-          options.onLine(line);
+      } else {
+        stdout += chunk;
+        if (options.onLine) {
+          lineBuf += chunk;
+          const parts = lineBuf.split('\n');
+          lineBuf = parts.pop()!;
+          for (const line of parts) {
+            options.onLine(line);
+          }
         }
       }
     });
@@ -100,6 +101,8 @@ export async function start(options: StartOptions): Promise<string> {
       if (useStreamJson) {
         if (streamResult !== null && streamResult.startsWith('error:')) {
           reject(new Error(streamResult.slice(6)));
+        } else if (code !== 0 && streamResult === null) {
+          reject(new Error(`claude exited with code ${code}: ${stderr}`));
         } else {
           resolve(streamResult ?? '');
         }
