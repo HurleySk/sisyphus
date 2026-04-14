@@ -8,6 +8,7 @@ import type {
   StackEndPayload,
   StackFilePayload,
   ProduceStartPayload,
+  ProduceStreamPayload,
   ProduceFileChangePayload,
   ProduceDiffPayload,
   ProduceEndPayload,
@@ -32,6 +33,43 @@ export interface FileChangeEntry {
   filePath: string;
   changeType: 'A' | 'M';
 }
+
+// --- Agent panel state (v3 layout) ---
+
+export type AgentMode = 'idle' | 'gathering' | 'sisyphus' | 'hades' | 'retry' | 'done';
+
+export interface RetryRecord {
+  attempt: number;
+  failedChecks: string[];
+}
+
+export interface AgentPanelState {
+  agent: AgentMode;
+  boulderName: string | null;
+  attempt: number;
+  maxAttempts: number;
+  startedAt: number | null;
+  streamingLines: string[];
+  stackFiles: StackFileEntry[];
+  structuralResults: CheckResult[] | null;
+  customResults: CheckResult[] | null;
+  climbFeedback: string | undefined;
+  retryHistory: RetryRecord[];
+}
+
+export const defaultAgentPanel: AgentPanelState = {
+  agent: 'idle',
+  boulderName: null,
+  attempt: 0,
+  maxAttempts: 0,
+  startedAt: null,
+  streamingLines: [],
+  stackFiles: [],
+  structuralResults: null,
+  customResults: null,
+  climbFeedback: undefined,
+  retryHistory: [],
+};
 
 // --- Worker panel state (bottom panel) ---
 
@@ -98,6 +136,7 @@ export interface UIState {
   completedBoulders: CompletedBoulder[];
   report: RunReport | null;
   workerPanel: WorkerPanelState;
+  agentPanel: AgentPanelState;  // NEW
 }
 
 export const defaultWorkerPanel: WorkerPanelState = {
@@ -122,6 +161,7 @@ export const initialUIState: UIState = {
   completedBoulders: [],
   report: null,
   workerPanel: { ...defaultWorkerPanel },
+  agentPanel: { ...defaultAgentPanel },
 };
 
 // --- Actions ---
@@ -135,6 +175,7 @@ export type UIAction =
   | { type: 'stack:file'; payload: StackFilePayload }
   | { type: 'stack:end'; payload?: StackEndPayload }
   | { type: 'produce:start'; payload: ProduceStartPayload }
+  | { type: 'produce:stream'; payload: ProduceStreamPayload }
   | { type: 'produce:file-change'; payload: ProduceFileChangePayload }
   | { type: 'produce:diff'; payload: ProduceDiffPayload }
   | { type: 'produce:end'; payload?: ProduceEndPayload }
@@ -174,6 +215,10 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         ...state,
         report: action.payload.report,
         workerPanel: { ...defaultWorkerPanel },
+        agentPanel: {
+          ...state.agentPanel,
+          agent: 'done',
+        },
       };
     }
 
@@ -198,6 +243,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         ...state,
         activeBoulder: fresh,
         workerPanel: { ...defaultWorkerPanel },
+        agentPanel: { ...defaultAgentPanel },
       };
     }
 
@@ -223,6 +269,12 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       return {
         ...state,
         activeBoulder: { ...updated, phase: 'stack' },
+        agentPanel: {
+          ...defaultAgentPanel,
+          agent: 'gathering',
+          boulderName: state.activeBoulder?.name ?? null,
+          startedAt: Date.now(),
+        },
       };
     }
 
@@ -238,6 +290,10 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         activeBoulder: {
           ...state.activeBoulder,
           stackFiles: [...state.activeBoulder.stackFiles, entry],
+        },
+        agentPanel: {
+          ...state.agentPanel,
+          stackFiles: [...state.agentPanel.stackFiles, entry],
         },
       };
     }
@@ -285,6 +341,27 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
           structuralCount: 0,
           customCount: 0,
           evaluatePassed: null,
+        },
+        agentPanel: {
+          ...defaultAgentPanel,
+          agent: 'sisyphus',
+          boulderName: action.payload.boulderName ?? state.activeBoulder?.name ?? null,
+          attempt: action.payload.attempt,
+          maxAttempts: action.payload.maxAttempts,
+          startedAt: Date.now(),
+          climbFeedback: action.payload.climbFeedback,
+          retryHistory: state.agentPanel.retryHistory,
+        },
+      };
+    }
+
+    case 'produce:stream': {
+      if (!state.activeBoulder) return state;
+      return {
+        ...state,
+        agentPanel: {
+          ...state.agentPanel,
+          streamingLines: [...state.agentPanel.streamingLines, action.payload.line],
         },
       };
     }
@@ -367,6 +444,14 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
           customCount,
           evaluatePassed: null,
         },
+        agentPanel: {
+          ...state.agentPanel,
+          agent: 'hades',
+          startedAt: Date.now(),
+          streamingLines: [],
+          structuralResults: null,
+          customResults: null,
+        },
       };
     }
 
@@ -382,6 +467,10 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
           ...state.workerPanel,
           structuralResults: action.payload.results,
         },
+        agentPanel: {
+          ...state.agentPanel,
+          structuralResults: action.payload.results,
+        },
       };
     }
 
@@ -395,6 +484,10 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         },
         workerPanel: {
           ...state.workerPanel,
+          customResults: action.payload.results,
+        },
+        agentPanel: {
+          ...state.agentPanel,
           customResults: action.payload.results,
         },
       };
@@ -443,6 +536,18 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         ...state,
         activeBoulder: updated,
         workerPanel: { ...defaultWorkerPanel },
+        agentPanel: {
+          ...state.agentPanel,
+          agent: 'retry',
+          climbFeedback: failureSummary,
+          retryHistory: [
+            ...state.agentPanel.retryHistory,
+            {
+              attempt: state.activeBoulder.attempt,
+              failedChecks: (action.payload?.failures ?? []).map(f => f.criterion),
+            },
+          ],
+        },
       };
     }
 
