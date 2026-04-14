@@ -260,6 +260,8 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
           boulderName: state.activeBoulder?.name ?? null,
           startedAt: Date.now(),
           sourceCount: action.payload?.sourceCount ?? 0,
+          boulderDescription: state.agentPanel.boulderDescription,
+          criteriaDescriptions: state.agentPanel.criteriaDescriptions,
         },
       };
     }
