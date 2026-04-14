@@ -109,4 +109,186 @@ describe('start', () => {
 
     await expect(promise).rejects.toThrow('spawn ENOENT');
   });
+
+  it('calls onLine for each line of stdout', async () => {
+    const proc = makeProc();
+    mockSpawn.mockReturnValue(proc);
+
+    const lines: string[] = [];
+    const promise = start({ prompt: 'Write something', onLine: (line) => lines.push(line) });
+
+    proc.stdout.emit('data', Buffer.from('line one\nline two\n'));
+    proc.stdout.emit('data', Buffer.from('partial'));
+    proc.stdout.emit('data', Buffer.from(' end\n'));
+    proc.emit('close', 0);
+
+    await promise;
+
+    expect(lines).toEqual(['line one', 'line two', 'partial end']);
+  });
+
+  it('flushes partial line on close', async () => {
+    const proc = makeProc();
+    mockSpawn.mockReturnValue(proc);
+
+    const lines: string[] = [];
+    const promise = start({ prompt: 'Write something', onLine: (line) => lines.push(line) });
+
+    proc.stdout.emit('data', Buffer.from('no newline'));
+    proc.emit('close', 0);
+
+    await promise;
+
+    expect(lines).toEqual(['no newline']);
+  });
+});
+
+describe('stream-json mode', () => {
+  it('spawns with stream-json flags when onStream is provided', async () => {
+    const proc = makeProc();
+    mockSpawn.mockReturnValue(proc);
+
+    const events: any[] = [];
+    const promise = start({ prompt: 'Write something', onStream: (e) => events.push(e) });
+
+    proc.stdout.emit('data', Buffer.from('{"type":"result","subtype":"success","result":"hello"}\n'));
+    proc.emit('close', 0);
+
+    await promise;
+
+    const args = mockSpawn.mock.calls[0][1] as string[];
+    expect(args).toContain('--verbose');
+    expect(args).toContain('--output-format');
+    expect(args).toContain('stream-json');
+    expect(args).toContain('--include-partial-messages');
+  });
+
+  it('emits thinking events for thinking_delta', async () => {
+    const proc = makeProc();
+    mockSpawn.mockReturnValue(proc);
+
+    const events: any[] = [];
+    const promise = start({ prompt: 'Write something', onStream: (e) => events.push(e) });
+
+    proc.stdout.emit('data', Buffer.from(
+      '{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"Let me think"}}}\n'
+    ));
+    proc.stdout.emit('data', Buffer.from('{"type":"result","subtype":"success","result":"hello"}\n'));
+    proc.emit('close', 0);
+
+    await promise;
+
+    expect(events).toContainEqual({ type: 'thinking' });
+  });
+
+  it('emits text events for text_delta', async () => {
+    const proc = makeProc();
+    mockSpawn.mockReturnValue(proc);
+
+    const events: any[] = [];
+    const promise = start({ prompt: 'Write something', onStream: (e) => events.push(e) });
+
+    proc.stdout.emit('data', Buffer.from(
+      '{"type":"stream_event","event":{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Hello world"}}}\n'
+    ));
+    proc.stdout.emit('data', Buffer.from('{"type":"result","subtype":"success","result":"Hello world"}\n'));
+    proc.emit('close', 0);
+
+    await promise;
+
+    expect(events).toContainEqual({ type: 'text', text: 'Hello world' });
+  });
+
+  it('resolves with result field from result event', async () => {
+    const proc = makeProc();
+    mockSpawn.mockReturnValue(proc);
+
+    const promise = start({ prompt: 'Write something', onStream: () => {} });
+
+    proc.stdout.emit('data', Buffer.from('{"type":"result","subtype":"success","result":"final output"}\n'));
+    proc.emit('close', 0);
+
+    const result = await promise;
+    expect(result).toBe('final output');
+  });
+
+  it('rejects on error result', async () => {
+    const proc = makeProc();
+    mockSpawn.mockReturnValue(proc);
+
+    const promise = start({ prompt: 'Write something', onStream: () => {} });
+
+    proc.stdout.emit('data', Buffer.from('{"type":"result","subtype":"error","is_error":true,"result":"something broke"}\n'));
+    proc.emit('close', 0);
+
+    await expect(promise).rejects.toThrow('something broke');
+  });
+
+  it('ignores non-relevant event types', async () => {
+    const proc = makeProc();
+    mockSpawn.mockReturnValue(proc);
+
+    const events: any[] = [];
+    const promise = start({ prompt: 'Write something', onStream: (e) => events.push(e) });
+
+    proc.stdout.emit('data', Buffer.from('{"type":"system","subtype":"init"}\n'));
+    proc.stdout.emit('data', Buffer.from('{"type":"system","subtype":"hook_started"}\n'));
+    proc.stdout.emit('data', Buffer.from('{"type":"rate_limit_event"}\n'));
+    proc.stdout.emit('data', Buffer.from('{"type":"assistant","message":{}}\n'));
+    proc.stdout.emit('data', Buffer.from('{"type":"stream_event","event":{"type":"message_start"}}\n'));
+    proc.stdout.emit('data', Buffer.from('{"type":"result","subtype":"success","result":"done"}\n'));
+    proc.emit('close', 0);
+
+    await promise;
+
+    expect(events).toEqual([]);
+  });
+
+  it('handles chunked JSON lines across data events', async () => {
+    const proc = makeProc();
+    mockSpawn.mockReturnValue(proc);
+
+    const events: any[] = [];
+    const promise = start({ prompt: 'Write something', onStream: (e) => events.push(e) });
+
+    proc.stdout.emit('data', Buffer.from('{"type":"stream_event","event":{"type":"content_block_'));
+    proc.stdout.emit('data', Buffer.from('delta","index":1,"delta":{"type":"text_delta","text":"split"}}}\n'));
+    proc.stdout.emit('data', Buffer.from('{"type":"result","subtype":"success","result":"split"}\n'));
+    proc.emit('close', 0);
+
+    await promise;
+
+    expect(events).toContainEqual({ type: 'text', text: 'split' });
+  });
+
+  it('does not use stream-json flags when onStream is not provided', async () => {
+    const proc = makeProc();
+    mockSpawn.mockReturnValue(proc);
+
+    const promise = start({ prompt: 'Write something' });
+    proc.stdout.emit('data', Buffer.from('plain text output'));
+    proc.emit('close', 0);
+
+    await promise;
+
+    const args = mockSpawn.mock.calls[0][1] as string[];
+    expect(args).not.toContain('--verbose');
+    expect(args).not.toContain('stream-json');
+    expect(args).not.toContain('--include-partial-messages');
+  });
+
+  it('onLine still works when onStream is not provided', async () => {
+    const proc = makeProc();
+    mockSpawn.mockReturnValue(proc);
+
+    const lines: string[] = [];
+    const promise = start({ prompt: 'Write something', onLine: (line) => lines.push(line) });
+
+    proc.stdout.emit('data', Buffer.from('line one\nline two\n'));
+    proc.emit('close', 0);
+
+    await promise;
+
+    expect(lines).toEqual(['line one', 'line two']);
+  });
 });
