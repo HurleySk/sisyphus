@@ -4,6 +4,8 @@ import Spinner from 'ink-spinner';
 import type { AgentPanelState } from '../state.js';
 import type { CheckResult } from '../../types.js';
 import { AgentHeader } from './AgentHeader.js';
+import { useElapsed } from '../hooks/useElapsed.js';
+import { formatElapsed } from '../format.js';
 
 interface AgentPanelProps {
   panel: AgentPanelState;
@@ -38,10 +40,13 @@ function GatheringBody({ panel, viewportHeight }: { panel: AgentPanelState; view
 }
 
 function SisyphusBody({ panel, viewportHeight }: { panel: AgentPanelState; viewportHeight: number }) {
+  const statusElapsed = useElapsed(panel.producerStatusStartedAt);
+  const elapsedLabel = panel.producerStatusStartedAt !== null ? ` ${formatElapsed(statusElapsed)}` : '';
+
   if (panel.producerStatus === 'idle') {
     return (
       <Box flexDirection="column">
-        <Text>  <Spinner type="dots" /> starting...</Text>
+        <Text>  <Spinner type="dots" /> starting...{elapsedLabel}</Text>
       </Box>
     );
   }
@@ -49,7 +54,7 @@ function SisyphusBody({ panel, viewportHeight }: { panel: AgentPanelState; viewp
   if (panel.producerStatus === 'thinking') {
     return (
       <Box flexDirection="column">
-        <Text>  <Spinner type="dots" /> reasoning...</Text>
+        <Text>  <Spinner type="dots" /> reasoning...{elapsedLabel}</Text>
       </Box>
     );
   }
@@ -67,7 +72,7 @@ function SisyphusBody({ panel, viewportHeight }: { panel: AgentPanelState; viewp
         <Text key={i}>  {line}</Text>
       ))}
       <Text>
-        {'  '}<Spinner type="dots" /> writing...
+        {'  '}<Spinner type="dots" /> writing...{elapsedLabel}
       </Text>
     </Box>
   );

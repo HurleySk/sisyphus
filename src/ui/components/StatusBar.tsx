@@ -12,6 +12,7 @@ interface StatusBarProps {
   total: number;
   elapsed: number;
   columns?: number;
+  activePhase: string | null;
 }
 
 function BoulderBadge({ name, icon, color, time }: { name: string; icon: string; color: string; time?: string }) {
@@ -22,7 +23,7 @@ function BoulderBadge({ name, icon, color, time }: { name: string; icon: string;
   );
 }
 
-export function StatusBar({ completed, activeBoulderName, boulderElapsed, pendingNames, total, elapsed, columns }: StatusBarProps) {
+export function StatusBar({ completed, activeBoulderName, boulderElapsed, pendingNames, total, elapsed, columns, activePhase }: StatusBarProps) {
   const completedCount = completed.length;
   const separatorWidth = columns ?? 54;
 
@@ -36,7 +37,9 @@ export function StatusBar({ completed, activeBoulderName, boulderElapsed, pendin
           return <BoulderBadge key={b.name} name={b.name} icon={icon} color={color} time={formatDuration(b.durationMs)} />;
         })}
         {activeBoulderName && (
-          <BoulderBadge name={activeBoulderName} icon="●" color="cyan" time={formatElapsed(boulderElapsed)} />
+          <Text>
+            <Text color="cyan">●</Text> {activeBoulderName}{activePhase ? ` · ${activePhase}` : ''} {formatElapsed(boulderElapsed)}{'    '}
+          </Text>
         )}
         {pendingNames.map((name) => (
           <BoulderBadge key={name} name={name} icon="○" color="gray" />

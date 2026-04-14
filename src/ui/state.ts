@@ -65,6 +65,7 @@ export interface AgentPanelState {
   checkCount: number;
   sourceCount: number;
   producerStatus: 'idle' | 'thinking' | 'streaming';
+  producerStatusStartedAt: number | null;
 }
 
 export const defaultAgentPanel: AgentPanelState = {
@@ -82,6 +83,7 @@ export const defaultAgentPanel: AgentPanelState = {
   checkCount: 0,
   sourceCount: 0,
   producerStatus: 'idle',
+  producerStatusStartedAt: null,
 };
 
 // --- Active boulder state ---
@@ -315,6 +317,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
           startedAt: Date.now(),
           climbFeedback: action.payload.climbFeedback,
           retryHistory: state.agentPanel.retryHistory,
+          producerStatusStartedAt: Date.now(),
         },
         phaseHistory: [...state.phaseHistory, ...historyAdditions],
       };
@@ -327,17 +330,20 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         agentPanel: {
           ...state.agentPanel,
           producerStatus: 'thinking',
+          producerStatusStartedAt: Date.now(),
         },
       };
     }
 
     case 'produce:stream': {
       if (!state.activeBoulder) return state;
+      const isTransition = state.agentPanel.producerStatus !== 'streaming';
       return {
         ...state,
         agentPanel: {
           ...state.agentPanel,
           producerStatus: 'streaming',
+          producerStatusStartedAt: isTransition ? Date.now() : state.agentPanel.producerStatusStartedAt,
           streamingLines: [...state.agentPanel.streamingLines, action.payload.line],
         },
       };
