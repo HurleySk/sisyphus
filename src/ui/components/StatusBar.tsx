@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import type { CompletedBoulder } from '../state.js';
 import { ProgressBar } from './ProgressBar.js';
-import { formatElapsed, formatDuration } from '../format.js';
+import { formatElapsed, formatDuration, boulderStatusStyle } from '../format.js';
 
 interface StatusBarProps {
   completed: CompletedBoulder[];
@@ -121,7 +121,6 @@ export function computeLayout(
 }
 
 export function StatusBar({ completed, activeBoulderName, boulderElapsed, pendingNames, total, elapsed, columns, activePhase }: StatusBarProps) {
-  const completedCount = completed.length;
   const separatorWidth = columns ?? 54;
 
   const layout = computeLayout(completed, activeBoulderName, activePhase, boulderElapsed, pendingNames, separatorWidth);
@@ -134,9 +133,8 @@ export function StatusBar({ completed, activeBoulderName, boulderElapsed, pendin
           <Text dimColor>{layout.collapsedCompleted}✓{'    '}</Text>
         ) : (
           layout.completedBadges.map((b) => {
-            const icon = b.status === 'flagged' ? '✗' : '✓';
-            const color = b.status === 'flagged' ? 'red' : b.attempts > 1 ? 'yellow' : 'green';
-            return <BoulderBadge key={b.name} name={b.name} icon={icon} color={color} time={formatDuration(b.durationMs)} />;
+            const style = boulderStatusStyle(b);
+            return <BoulderBadge key={b.name} name={b.name} icon={style.icon} color={style.color} time={formatDuration(b.durationMs)} />;
           })
         )}
         {layout.showActive && activeBoulderName && (
@@ -153,8 +151,8 @@ export function StatusBar({ completed, activeBoulderName, boulderElapsed, pendin
         )}
       </Box>
       <Box>
-        <ProgressBar completed={completedCount} total={total} width={30} />
-        <Text>  {completedCount}/{total} · {formatElapsed(elapsed)}</Text>
+        <ProgressBar completed={completed.length} total={total} width={30} />
+        <Text>  {completed.length}/{total} · {formatElapsed(elapsed)}</Text>
       </Box>
     </Box>
   );

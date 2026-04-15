@@ -2,7 +2,7 @@
 import { useReducer, useEffect, useRef, useCallback } from 'react';
 import type { TypedEmitter, SisyphusEvents } from '../../events.js';
 import { uiReducer, initialUIState } from '../state.js';
-import type { UIState } from '../state.js';
+import type { UIState, UIAction } from '../state.js';
 
 const EVENT_NAMES: Array<keyof SisyphusEvents & string> = [
   'run:start',
@@ -34,21 +34,29 @@ export function useEngine(emitter: TypedEmitter<SisyphusEvents>): UIState {
   const streamBufferRef = useRef<string[]>([]);
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Single controlled cast point — event names are dynamic strings at runtime,
+  // so TypeScript cannot narrow to specific UIAction variants in a loop.
+  const emit = useCallback(
+    (type: string, payload: unknown) => dispatch({ type, payload } as UIAction),
+    [],
+  );
+
   const flushStreamBuffer = useCallback(() => {
     flushTimerRef.current = null;
     if (streamBufferRef.current.length === 0) return;
     const lines = streamBufferRef.current;
     streamBufferRef.current = [];
-    dispatch({ type: 'produce:stream-batch', payload: { lines } } as any);
-  }, []);
+    emit('produce:stream-batch', { lines });
+  }, [emit]);
 
   useEffect(() => {
-    const handlers = new Map<string, (payload: unknown) => void>();
+    type Handler = (payload: unknown) => void;
+    const handlers = new Map<string, Handler>();
 
     for (const eventName of EVENT_NAMES) {
       if (BATCH_EVENTS.has(eventName)) {
         // Buffer rapid events and flush periodically
-        const handler = (payload: unknown) => {
+        const handler: Handler = (payload) => {
           const p = payload as { line: string };
           streamBufferRef.current.push(p.line);
           if (flushTimerRef.current === null) {
@@ -56,9 +64,9 @@ export function useEngine(emitter: TypedEmitter<SisyphusEvents>): UIState {
           }
         };
         handlers.set(eventName, handler);
-        emitter.on(eventName, handler as any);
+        (emitter as any).on(eventName, handler);
       } else {
-        const handler = (payload: unknown) => {
+        const handler: Handler = (payload) => {
           // Flush any pending stream lines before a non-stream event
           // to maintain correct ordering (e.g., produce:end after all lines)
           if (streamBufferRef.current.length > 0) {
@@ -68,18 +76,18 @@ export function useEngine(emitter: TypedEmitter<SisyphusEvents>): UIState {
             }
             const lines = streamBufferRef.current;
             streamBufferRef.current = [];
-            dispatch({ type: 'produce:stream-batch', payload: { lines } } as any);
+            emit('produce:stream-batch', { lines });
           }
-          dispatch({ type: eventName, payload } as any);
+          emit(eventName, payload);
         };
         handlers.set(eventName, handler);
-        emitter.on(eventName, handler as any);
+        (emitter as any).on(eventName, handler);
       }
     }
 
     return () => {
       for (const [eventName, handler] of handlers) {
-        emitter.off(eventName as keyof SisyphusEvents & string, handler as any);
+        (emitter as any).off(eventName, handler);
       }
       if (flushTimerRef.current !== null) {
         clearTimeout(flushTimerRef.current);

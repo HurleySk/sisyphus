@@ -5,7 +5,7 @@ import type { AgentPanelState } from '../state.js';
 import type { CheckResult } from '../../types.js';
 import { AgentHeader } from './AgentHeader.js';
 import { elapsedSeconds } from '../hooks/useElapsed.js';
-import { formatElapsed } from '../format.js';
+import { formatElapsed, sliceViewport } from '../format.js';
 
 interface AgentPanelProps {
   panel: AgentPanelState;
@@ -16,14 +16,11 @@ interface AgentPanelProps {
 
 function GatheringBody({ panel, viewportHeight }: { panel: AgentPanelState; viewportHeight: number }) {
   const totalLines = panel.stackFiles.reduce((sum, f) => sum + f.lines, 0);
-  const budget = Math.max(viewportHeight - 2, 3); // reserve for spinner + summary
-  const hasMore = panel.stackFiles.length > budget;
-  const maxItems = hasMore ? budget - 1 : budget;
-  const visibleFiles = panel.stackFiles.slice(-maxItems);
+  const { visible: visibleFiles, overflowCount } = sliceViewport(panel.stackFiles, viewportHeight, 2);
 
   return (
     <Box flexDirection="column">
-      {hasMore && <Text dimColor>  ↑ {panel.stackFiles.length - maxItems} more files</Text>}
+      {overflowCount > 0 && <Text dimColor>  ↑ {overflowCount} more files</Text>}
       {visibleFiles.map((f, i) => (
         <Text key={i}>
           {'  '}<Text color="green">✓</Text> {f.path}
@@ -40,7 +37,7 @@ function GatheringBody({ panel, viewportHeight }: { panel: AgentPanelState; view
 }
 
 function SisyphusBody({ panel, viewportHeight }: { panel: AgentPanelState; viewportHeight: number }) {
-  // No useElapsed here — parent App ticks once/sec via useTick(), which re-renders this component
+  // Parent App ticks once/sec via useTick(), which re-renders this component
   const statusElapsed = panel.producerStatusStartedAt !== null ? elapsedSeconds(panel.producerStatusStartedAt) : 0;
   const elapsedLabel = panel.producerStatusStartedAt !== null ? ` ${formatElapsed(statusElapsed)}` : '';
 
@@ -76,14 +73,11 @@ function SisyphusBody({ panel, viewportHeight }: { panel: AgentPanelState; viewp
   }
 
   // Streaming — show lines with viewport windowing
-  const budget = Math.max(viewportHeight - 2, 3);
-  const hasMore = panel.streamingLines.length > budget;
-  const maxLines = hasMore ? budget - 1 : budget;
-  const visibleLines = panel.streamingLines.slice(-maxLines);
+  const { visible: visibleLines, overflowCount } = sliceViewport(panel.streamingLines, viewportHeight, 2);
 
   return (
     <Box flexDirection="column">
-      {hasMore && <Text dimColor>  ↑ {panel.streamingLines.length - maxLines} more lines</Text>}
+      {overflowCount > 0 && <Text dimColor>  ↑ {overflowCount} more lines</Text>}
       {visibleLines.map((line, i) => (
         <Text key={i}>  {line}</Text>
       ))}
@@ -111,14 +105,11 @@ function HadesBody({ panel, viewportHeight }: { panel: AgentPanelState; viewport
   const totalReceived = allResults.length;
   const allDone = panel.checkCount > 0 && totalReceived >= panel.checkCount;
   const showSpinner = !allDone;
-  const budget = Math.max(viewportHeight - (showSpinner ? 1 : 0), 3); // reserve for spinner if showing
-  const hasMore = allResults.length > budget;
-  const maxItems = hasMore ? budget - 1 : budget; // reserve 1 line for indicator when overflowing
-  const visibleResults = allResults.slice(-maxItems);
+  const { visible: visibleResults, overflowCount } = sliceViewport(allResults, viewportHeight, showSpinner ? 1 : 0);
 
   return (
     <Box flexDirection="column">
-      {hasMore && <Text dimColor>  ↑ {allResults.length - maxItems} more checks</Text>}
+      {overflowCount > 0 && <Text dimColor>  ↑ {overflowCount} more checks</Text>}
       {visibleResults.map((r, i) => <ResultLine key={i} result={r} />)}
       {showSpinner && (
         <Text>  <Spinner type="dots" /> {structural.length > 0 ? 'evaluating custom criteria...' : 'evaluating...'}</Text>
@@ -130,14 +121,11 @@ function HadesBody({ panel, viewportHeight }: { panel: AgentPanelState; viewport
 function RetryBody({ panel, viewportHeight }: { panel: AgentPanelState; viewportHeight: number }) {
   const lastRetry = panel.retryHistory[panel.retryHistory.length - 1];
   const checks = lastRetry?.failedChecks ?? [];
-  const budget = Math.max(viewportHeight - 3, 2); // reserve for feedback, blank, restarting lines
-  const hasMore = checks.length > budget;
-  const maxItems = hasMore ? budget - 1 : budget; // reserve 1 line for indicator when overflowing
-  const visibleChecks = checks.slice(-maxItems);
+  const { visible: visibleChecks, overflowCount } = sliceViewport(checks, viewportHeight, 3);
 
   return (
     <Box flexDirection="column">
-      {hasMore && <Text dimColor>  ↑ {checks.length - maxItems} more checks</Text>}
+      {overflowCount > 0 && <Text dimColor>  ↑ {overflowCount} more checks</Text>}
       {visibleChecks.map((check, i) => (
         <Text key={i} color="red">  ✗ {check}</Text>
       ))}

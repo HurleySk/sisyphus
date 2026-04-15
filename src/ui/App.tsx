@@ -2,25 +2,18 @@ import React from 'react';
 import { Box, Static, Text, useWindowSize, useInput, useApp } from 'ink';
 import type { TypedEmitter, SisyphusEvents } from '../events.js';
 import type { Spec } from '../types.js';
-import type { AgentMode } from './state.js';
 import { useEngine } from './hooks/useEngine.js';
 import { useTick, elapsedSeconds } from './hooks/useElapsed.js';
 import { AgentPanel } from './components/AgentPanel.js';
+import { agentConfig } from './components/AgentHeader.js';
 import { CompletionSummary } from './components/CompletionSummary.js';
 import { StatusBar } from './components/StatusBar.js';
+import type { AgentMode } from './state.js';
 
 export const MAX_VISIBLE_PHASES = 6;
 
 function agentColor(agent: AgentMode): string {
-  const colors: Record<AgentMode, string> = {
-    idle: 'gray',
-    gathering: 'cyan',
-    sisyphus: 'magenta',
-    hades: 'red',
-    retry: 'yellow',
-    done: 'green',
-  };
-  return colors[agent];
+  return agentConfig[agent].color;
 }
 
 export interface AppProps {

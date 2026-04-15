@@ -13,7 +13,7 @@ interface AgentHeaderProps {
   sourceCount?: number;
 }
 
-const agentConfig: Record<AgentMode, { label: string; color: string }> = {
+export const agentConfig: Record<AgentMode, { label: string; color: string }> = {
   idle: { label: '', color: 'dim' },
   gathering: { label: 'GATHERING', color: 'cyan' },
   sisyphus: { label: 'SISYPHUS', color: 'magenta' },

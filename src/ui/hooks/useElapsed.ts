@@ -24,33 +24,3 @@ export function useTick(intervalMs = 1000): number {
   return tick;
 }
 
-/**
- * React hook that re-renders every second and returns elapsed seconds
- * since startTime. Returns 0 when startTime is null.
- *
- * NOTE: Each call creates its own setInterval. If you need multiple
- * elapsed values, prefer useTick() + elapsedSeconds() to share one timer.
- */
-export function useElapsed(startTime: number | null): number {
-  const [elapsed, setElapsed] = useState<number>(
-    startTime !== null ? elapsedSeconds(startTime) : 0
-  );
-
-  useEffect(() => {
-    if (startTime === null) {
-      setElapsed(0);
-      return;
-    }
-
-    // Update immediately in case time passed before the effect ran
-    setElapsed(elapsedSeconds(startTime));
-
-    const id = setInterval(() => {
-      setElapsed(elapsedSeconds(startTime));
-    }, 1000);
-
-    return () => clearInterval(id);
-  }, [startTime]);
-
-  return elapsed;
-}

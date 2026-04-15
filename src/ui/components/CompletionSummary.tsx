@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import type { RunReport } from '../../types.js';
 import type { CompletedBoulder } from '../state.js';
-import { formatElapsed, formatDuration } from '../format.js';
+import { formatElapsed, formatDuration, boulderStatusStyle } from '../format.js';
 
 interface CompletionSummaryProps {
   report: RunReport;
@@ -14,8 +14,7 @@ interface CompletionSummaryProps {
 }
 
 function BoulderSummary({ boulder, report }: { boulder: CompletedBoulder; report: RunReport }) {
-  const icon = boulder.status === 'flagged' ? '✗' : '✓';
-  const iconColor = boulder.status === 'flagged' ? 'red' : boulder.attempts > 1 ? 'yellow' : 'green';
+  const { icon, color: iconColor } = boulderStatusStyle(boulder);
   const attemptLabel = boulder.attempts === 1 ? '1 attempt' : `${boulder.attempts} attempts`;
   const reportBoulder = report.boulders.find(b => b.name === boulder.name);
   const wordCount = reportBoulder?.content?.split(/\s+/).filter(Boolean).length ?? 0;

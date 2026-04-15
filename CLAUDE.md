@@ -32,13 +32,10 @@ Core principle: Thanatos dispatches, never produces. Sisyphus and Hades are alwa
 ## Current State
 
 - **Engine built and tested** -- 228 tests, CLI working (`npx sisyphus run/validate`)
-- Design spec: `docs/superpowers/specs/2026-04-10-sisyphus-generalized-engine-design.md`
-- Implementation plan: `docs/superpowers/plans/2026-04-10-sisyphus-engine-mvp.md`
-- UI v3 design spec: `docs/superpowers/specs/2026-04-14-sisyphus-ui-v3-agent-first-design.md`
-- UI v3 plan: `docs/superpowers/plans/2026-04-14-sisyphus-ui-v3-agent-first.md`
 - Documentation layer complete with structural checks (code-block-aware)
 - Lessons system operational (global + per-layer, budget-capped)
 - Ink-based terminal UI with agent-first layout, live streaming, per-boulder status bar, incremental rendering
+- Codebase refactored: shared UI helpers (`sliceViewport`, `boulderStatusStyle`), extracted `processBoulder`/`parseEvaluatorResponse` from engine, consolidated type casts
 
 ## Next Steps
 
