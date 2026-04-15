@@ -260,7 +260,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         ...state,
         activeBoulder: null,
         completedBoulders: [...state.completedBoulders, completed],
-        agentPanel: { ...defaultAgentPanel },
+        agentPanel: { ...defaultAgentPanel, agent: 'done' },
         phaseHistory: [...state.phaseHistory, hadesEntry],
       };
     }
