@@ -41,7 +41,7 @@
       "criteria": [
         {
           "check": "contains-heading",
-          "text": "Architecture",
+          "heading": "Architecture",
           "description": "Has an Architecture heading"
         },
         {
