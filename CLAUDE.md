@@ -31,10 +31,11 @@ Core principle: Thanatos dispatches, never produces. Sisyphus and Hades are alwa
 
 ## Current State
 
-- **Engine built and tested** -- 228 tests, CLI working (`npx sisyphus run/validate`)
+- **Engine built and tested** -- 234 tests, CLI working (`npx sisyphus run/validate`)
 - Documentation layer complete with structural checks (code-block-aware)
 - Lessons system operational (global + per-layer, budget-capped)
 - Ink-based terminal UI with agent-first layout, live streaming, per-boulder status bar, incremental rendering
+- UI polish: relative paths in gathering, compressed retry history, title pinning in Static eviction, truncated error messages
 - Codebase refactored: shared UI helpers (`sliceViewport`, `boulderStatusStyle`), extracted `processBoulder`/`parseEvaluatorResponse` from engine, consolidated type casts
 
 ## Next Steps
