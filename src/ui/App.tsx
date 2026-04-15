@@ -125,10 +125,11 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
               </React.Fragment>
             );
           }
+          const phase = entry as PhaseHistoryEntry;
           return (
             <Text key={`phase-${i}`} dimColor>
-              <Text color={agentColor(entry.agent)}>{entry.agent.toUpperCase()}</Text>
-              {' \u00b7 '}{entry.boulderName}{' \u00b7 '}{entry.summary}
+              <Text color={agentColor(phase.agent)}>{phase.agent.toUpperCase()}</Text>
+              {' \u00b7 '}{phase.boulderName}{' \u00b7 '}{phase.summary}
             </Text>
           );
         }}
