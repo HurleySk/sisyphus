@@ -326,11 +326,19 @@ describe('phaseHistory accumulation', () => {
     expect(entry.summary).toBe('2/2 checks passed');
   });
 
-  it('climb appends hades failed summary with retrying', () => {
+  it('climb merges hades failure into preceding sisyphus entry', () => {
     let state = makeBoulderWithStack();
     state = apply(state, {
       type: 'produce:start',
       payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
+    });
+    state = apply(state, {
+      type: 'produce:stream',
+      payload: { boulderName: 'b1', line: '# Title' },
+    });
+    state = apply(state, {
+      type: 'produce:stream',
+      payload: { boulderName: 'b1', line: 'Content' },
     });
     state = apply(state, {
       type: 'evaluate:start',
@@ -376,11 +384,13 @@ describe('phaseHistory accumulation', () => {
       },
     });
 
-    // gathering + sisyphus + hades = 3 entries
-    expect(state.phaseHistory).toHaveLength(3);
-    const entry = state.phaseHistory[2];
-    expect(entry.agent).toBe('hades');
+    // gathering + merged sisyphus = 2 entries (NOT 3)
+    expect(state.phaseHistory).toHaveLength(2);
+    const entry = state.phaseHistory[1];
+    expect(entry.agent).toBe('sisyphus');
     expect(entry.boulderName).toBe('b1');
-    expect(entry.summary).toBe('2/3 checks failed \u2192 retrying');
+    expect(entry.summary).toContain('attempt 1');
+    expect(entry.summary).toContain('2 lines');
+    expect(entry.summary).toContain('2/3 failed');
   });
 });

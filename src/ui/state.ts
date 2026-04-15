@@ -508,19 +508,25 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         ?.map((f) => f.message)
         .join(', ') ?? 'evaluation failed';
 
-      // Append hades failed evaluation summary
+      // Merge hades failure info into the preceding sisyphus phase entry
       const climbStructural = state.agentPanel.structuralResults ?? [];
       const climbCustom = state.agentPanel.customResults ?? [];
       const climbAllChecks = [...climbStructural, ...climbCustom];
       const climbFailedCount = climbAllChecks.filter(c => !c.pass).length;
       const climbTotalChecks = climbAllChecks.length;
-      const climbHadesEntry: PhaseHistoryEntry = {
-        agent: 'hades',
-        boulderName: state.activeBoulder.name,
-        summary: climbTotalChecks > 0
-          ? `${climbFailedCount}/${climbTotalChecks} checks failed \u2192 retrying`
-          : 'evaluation failed \u2192 retrying',
-      };
+      const failSuffix = climbTotalChecks > 0
+        ? ` \u2192 ${climbFailedCount}/${climbTotalChecks} failed`
+        : ' \u2192 failed';
+
+      // Update the last phase history entry (should be the sisyphus entry from evaluate:start)
+      const updatedHistory = [...state.phaseHistory];
+      const lastIdx = updatedHistory.length - 1;
+      if (lastIdx >= 0 && updatedHistory[lastIdx].agent === 'sisyphus') {
+        updatedHistory[lastIdx] = {
+          ...updatedHistory[lastIdx],
+          summary: updatedHistory[lastIdx].summary + failSuffix,
+        };
+      }
 
       return {
         ...state,
@@ -537,7 +543,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
             },
           ],
         },
-        phaseHistory: [...state.phaseHistory, climbHadesEntry],
+        phaseHistory: updatedHistory,
       };
     }
 
