@@ -167,6 +167,16 @@ describe('AgentPanel', () => {
     expect(out).toContain('waiting');
   });
 
+  it('returns empty output when agent is done', () => {
+    const panel: AgentPanelState = {
+      ...defaultAgentPanel,
+      agent: 'done',
+    };
+    const out = cap(<AgentPanel panel={panel} elapsed={0} />);
+    expect(out).not.toContain('waiting');
+    expect(out).toBe('');
+  });
+
   it('shows "starting..." when producerStatus is idle', () => {
     const panel: AgentPanelState = {
       ...defaultAgentPanel,

@@ -146,6 +146,10 @@ export function AgentPanel({ panel, elapsed, mainHeight, columns }: AgentPanelPr
     return <Text dimColor>waiting for dispatch...</Text>;
   }
 
+  if (panel.agent === 'done') {
+    return null;
+  }
+
   return (
     <Box flexDirection="column" height={mainHeight}>
       <AgentHeader
