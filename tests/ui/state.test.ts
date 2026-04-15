@@ -277,3 +277,66 @@ describe('uiReducer', () => {
     });
   });
 });
+
+describe('stack:file relative paths', () => {
+  it('strips baseDir prefix from filePath', () => {
+    let state = apply(initialUIState, {
+      type: 'run:start',
+      payload: { title: 'T', layer: 'l', totalBoulders: 1, maxRetries: 3, baseDir: '/home/user/project' },
+    });
+    state = apply(state, {
+      type: 'boulder:start',
+      payload: { name: 'b1', index: 0, total: 1, maxAttempts: 3, description: '', criteriaDescriptions: [] },
+    });
+    state = apply(state, {
+      type: 'stack:start',
+      payload: { boulderName: 'b1', sourceCount: 1 },
+    });
+    state = apply(state, {
+      type: 'stack:file',
+      payload: { boulderName: 'b1', filePath: '/home/user/project/src/engine.ts', lineCount: 270, summarized: true },
+    });
+    expect(state.agentPanel.stackFiles[0].path).toBe('src/engine.ts');
+    expect(state.activeBoulder?.stackFiles[0].path).toBe('src/engine.ts');
+  });
+
+  it('keeps path unchanged when baseDir is not set', () => {
+    let state = apply(initialUIState, {
+      type: 'run:start',
+      payload: { title: 'T', layer: 'l', totalBoulders: 1, maxRetries: 3 },
+    });
+    state = apply(state, {
+      type: 'boulder:start',
+      payload: { name: 'b1', index: 0, total: 1, maxAttempts: 3, description: '', criteriaDescriptions: [] },
+    });
+    state = apply(state, {
+      type: 'stack:start',
+      payload: { boulderName: 'b1', sourceCount: 1 },
+    });
+    state = apply(state, {
+      type: 'stack:file',
+      payload: { boulderName: 'b1', filePath: '/abs/path/file.ts', lineCount: 50, summarized: false },
+    });
+    expect(state.agentPanel.stackFiles[0].path).toBe('/abs/path/file.ts');
+  });
+
+  it('handles Windows backslash paths', () => {
+    let state = apply(initialUIState, {
+      type: 'run:start',
+      payload: { title: 'T', layer: 'l', totalBoulders: 1, maxRetries: 3, baseDir: 'C:\\Users\\me\\project' },
+    });
+    state = apply(state, {
+      type: 'boulder:start',
+      payload: { name: 'b1', index: 0, total: 1, maxAttempts: 3, description: '', criteriaDescriptions: [] },
+    });
+    state = apply(state, {
+      type: 'stack:start',
+      payload: { boulderName: 'b1', sourceCount: 1 },
+    });
+    state = apply(state, {
+      type: 'stack:file',
+      payload: { boulderName: 'b1', filePath: 'C:\\Users\\me\\project\\src\\engine.ts', lineCount: 270, summarized: false },
+    });
+    expect(state.agentPanel.stackFiles[0].path).toBe('src/engine.ts');
+  });
+});

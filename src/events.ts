@@ -9,6 +9,7 @@ export interface RunStartPayload {
   layer: string;
   totalBoulders: number;
   maxRetries: number;
+  baseDir?: string;
 }
 
 export interface RunEndPayload {

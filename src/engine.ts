@@ -237,7 +237,7 @@ export async function runSpec(
   const verbose = options?.verbose ?? false;
   const log = (msg: string) => { if (verbose) console.log(msg); };
 
-  emitter?.emit('run:start', { title: spec.title, layer: spec.layer, totalBoulders: spec.boulders.length, maxRetries });
+  emitter?.emit('run:start', { title: spec.title, layer: spec.layer, totalBoulders: spec.boulders.length, maxRetries, baseDir });
 
   // Boulder loop (Thanatos enforces)
   for (const [index, boulder] of spec.boulders.entries()) {

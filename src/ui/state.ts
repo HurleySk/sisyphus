@@ -125,6 +125,7 @@ export interface UIState {
   title: string;
   layer: string;
   totalBoulders: number;
+  baseDir: string;
   activeBoulder: BoulderUIState | null;
   completedBoulders: CompletedBoulder[];
   report: RunReport | null;
@@ -136,6 +137,7 @@ export const initialUIState: UIState = {
   title: '',
   layer: '',
   totalBoulders: 0,
+  baseDir: '',
   activeBoulder: null,
   completedBoulders: [],
   report: null,
@@ -166,6 +168,18 @@ export type UIAction =
   | { type: 'evaluate:end'; payload: EvaluateEndPayload }
   | { type: 'climb'; payload?: ClimbPayload };
 
+// --- Helpers ---
+
+function toRelativePath(filePath: string, baseDir: string): string {
+  if (!baseDir) return filePath;
+  const normalizedFile = filePath.replace(/\\/g, '/');
+  const normalizedBase = baseDir.replace(/\\/g, '/').replace(/\/$/, '') + '/';
+  if (normalizedFile.startsWith(normalizedBase)) {
+    return normalizedFile.slice(normalizedBase.length);
+  }
+  return filePath;
+}
+
 // --- Reducer ---
 
 export function uiReducer(state: UIState, action: UIAction): UIState {
@@ -177,6 +191,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         title,
         layer,
         totalBoulders,
+        baseDir: action.payload.baseDir ?? '',
       };
     }
 
@@ -270,7 +285,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
     case 'stack:file': {
       if (!state.activeBoulder) return state;
       const entry: StackFileEntry = {
-        path: action.payload.filePath,
+        path: toRelativePath(action.payload.filePath, state.baseDir),
         lines: action.payload.lineCount,
         summarized: action.payload.summarized,
       };
