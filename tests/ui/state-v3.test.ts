@@ -243,6 +243,29 @@ describe('phaseHistory accumulation', () => {
     expect(entry.summary).toBe('2 files (234 lines)');
   });
 
+  it('produce:start suppresses gathering entry when no files were gathered', () => {
+    let state = apply(initialUIState, {
+      type: 'run:start',
+      payload: { title: 'T', layer: 'l', totalBoulders: 1, maxRetries: 3 },
+    });
+    state = apply(state, {
+      type: 'boulder:start',
+      payload: { name: 'b1', index: 0, total: 1, maxAttempts: 3, description: '', criteriaDescriptions: [] },
+    });
+    state = apply(state, {
+      type: 'stack:start',
+      payload: { boulderName: 'b1', sourceCount: 0 },
+    });
+    expect(state.agentPanel.agent).toBe('gathering');
+
+    state = apply(state, {
+      type: 'produce:start',
+      payload: { boulderName: 'b1', attempt: 0, maxAttempts: 3 },
+    });
+
+    expect(state.phaseHistory).toHaveLength(0);
+  });
+
   it('produce:start does NOT append gathering summary when not in gathering mode', () => {
     let state = apply(initialUIState, {
       type: 'run:start',

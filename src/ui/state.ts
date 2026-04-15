@@ -316,12 +316,14 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       if (state.agentPanel.agent === 'gathering') {
         const files = state.agentPanel.stackFiles;
         const fileCount = files.length;
-        const totalLines = files.reduce((sum, f) => sum + f.lines, 0);
-        historyAdditions.push({
-          agent: 'gathering',
-          boulderName: resolvedName,
-          summary: fileCount === 0 ? 'no sources' : `${fileCount} file${fileCount !== 1 ? 's' : ''} (${totalLines} lines)`,
-        });
+        if (fileCount > 0) {
+          const totalLines = files.reduce((sum, f) => sum + f.lines, 0);
+          historyAdditions.push({
+            agent: 'gathering',
+            boulderName: resolvedName,
+            summary: `${fileCount} file${fileCount !== 1 ? 's' : ''} (${totalLines} lines)`,
+          });
+        }
       }
 
       return {
