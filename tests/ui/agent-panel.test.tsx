@@ -381,4 +381,27 @@ describe('CompletionSummary (v3)', () => {
     expect(out).toContain('broken');
     expect(out).toContain('1 flagged');
   });
+
+  it('truncates long failure messages to 120 characters', () => {
+    const longMessage = 'Failed to parse Hades response: ```json\n[\n  {\n    "criterion": "Describes the data flow between at least 3 modules with clear directionality",\n    "pass": true,\n    "evidence": "Stack | stack.ts -> start.ts (haiku) | StackResult[]"';
+    const report: RunReport = {
+      title: 'Test', startedAt: '', completedAt: '',
+      boulders: [
+        { name: 'broken', content: '', attempts: 3, status: 'flagged',
+          failures: [{ criterion: 'Hades evaluation', pass: false, message: longMessage }] },
+      ],
+      totalBoulders: 1, passedClean: 0, passedAfterClimb: 0, flagged: 1,
+    };
+    const completed: CompletedBoulder[] = [{
+      name: 'broken', status: 'flagged', attempts: 3, durationMs: 30000,
+      failures: [{ criterion: 'Hades evaluation', pass: false, message: longMessage }],
+    }];
+    const out = cap(
+      <CompletionSummary report={report} completedBoulders={completed}
+        artifactPath="output/test.md" reportPath="output/test-report.json" elapsed={30} />
+    );
+    expect(out).not.toContain('evidence');
+    expect(out).toContain('...');
+    expect(out).toContain('Hades evaluation');
+  });
 });

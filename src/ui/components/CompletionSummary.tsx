@@ -4,6 +4,14 @@ import type { RunReport } from '../../types.js';
 import type { CompletedBoulder } from '../state.js';
 import { formatElapsed, formatDuration, boulderStatusStyle } from '../format.js';
 
+function truncateMessage(msg: string, max = 120): string {
+  const lines = msg.split('\n');
+  const firstLine = lines[0];
+  const multiLine = lines.length > 1;
+  if (firstLine.length <= max) return multiLine ? firstLine + '...' : firstLine;
+  return firstLine.slice(0, max) + '...';
+}
+
 interface CompletionSummaryProps {
   report: RunReport;
   completedBoulders: CompletedBoulder[];
@@ -39,7 +47,7 @@ function BoulderSummary({ boulder, report }: { boulder: CompletedBoulder; report
       {boulder.status === 'flagged' && boulder.failures && boulder.failures.length > 0 && (
         <Box flexDirection="column">
           {boulder.failures.map((f, i) => (
-            <Text key={i} color="red">      ✗ {f.criterion}  {f.message}</Text>
+            <Text key={i} color="red">      ✗ {f.criterion}  {truncateMessage(f.message)}</Text>
           ))}
         </Box>
       )}
