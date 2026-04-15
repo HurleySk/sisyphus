@@ -8,7 +8,11 @@ import { AgentPanel } from './components/AgentPanel.js';
 import { agentConfig } from './components/AgentHeader.js';
 import { CompletionSummary } from './components/CompletionSummary.js';
 import { StatusBar } from './components/StatusBar.js';
-import type { AgentMode } from './state.js';
+import type { AgentMode, PhaseHistoryEntry } from './state.js';
+
+type StaticItem =
+  | { __type: 'title'; title: string; layer: string; totalBoulders: number }
+  | PhaseHistoryEntry;
 
 export const MAX_VISIBLE_PHASES = 6;
 
@@ -60,8 +64,18 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
   const recentStart = expanded ? 0 : evictedCount;
   const recent = state.phaseHistory.slice(recentStart);
 
-  const visibleHistoryLines = recent.length + (!expanded && evictedCount > 0 ? 1 : 0);
-  const headerLines = state.title ? 2 : 0;
+  const titleItem: StaticItem | null = state.title
+    ? { __type: 'title', title: state.title, layer: state.layer, totalBoulders: state.totalBoulders }
+    : null;
+
+  const staticItems: StaticItem[] = [
+    ...(titleItem && evictedCount > 0 ? [titleItem] : []),
+    ...evicted,
+  ];
+
+  const titleVisible = evictedCount === 0 && state.title ? 2 : 0;
+  const visibleHistoryLines = recent.length + (!expanded && evictedCount > 0 ? 1 : 0) + titleVisible;
+  const headerLines = 0;
   const mainHeight = Math.max(rows - STATUS_BAR_HEIGHT - KEY_HINT_HEIGHT - visibleHistoryLines - headerLines, 5);
 
   const pendingNames = spec.boulders
@@ -89,7 +103,7 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
 
   return (
     <Box flexDirection="column">
-      {state.title && (
+      {evictedCount === 0 && state.title && (
         <>
           <Text>
             <Text bold color="white">{state.title}</Text>
@@ -98,13 +112,26 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
           <Text dimColor>{headerSeparator}</Text>
         </>
       )}
-      <Static items={evicted}>
-        {(entry, i) => (
-          <Text key={i} dimColor>
-            <Text color={agentColor(entry.agent)}>{entry.agent.toUpperCase()}</Text>
-            {' \u00b7 '}{entry.boulderName}{' \u00b7 '}{entry.summary}
-          </Text>
-        )}
+      <Static items={staticItems}>
+        {(entry, i) => {
+          if ('__type' in entry && entry.__type === 'title') {
+            return (
+              <React.Fragment key="__title__">
+                <Text>
+                  <Text bold color="white">{entry.title}</Text>
+                  <Text dimColor> · {entry.layer} · {entry.totalBoulders} boulder{entry.totalBoulders !== 1 ? 's' : ''}</Text>
+                </Text>
+                <Text dimColor>{headerSeparator}</Text>
+              </React.Fragment>
+            );
+          }
+          return (
+            <Text key={`phase-${i}`} dimColor>
+              <Text color={agentColor(entry.agent)}>{entry.agent.toUpperCase()}</Text>
+              {' \u00b7 '}{entry.boulderName}{' \u00b7 '}{entry.summary}
+            </Text>
+          );
+        }}
       </Static>
       {!expanded && recent.length > 0 && evictedCount > 0 && (
         <Text dimColor>  ↑ {evictedCount} earlier phases</Text>
