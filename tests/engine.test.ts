@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import os from 'os';
 import path from 'path';
-import { runSpec } from '../src/engine.js';
+import { runSpec, parseEvaluatorResponse } from '../src/engine.js';
 import * as startModule from '../src/start.js';
 import * as stackModule from '../src/stack.js';
 import type { Spec } from '../src/types.js';
@@ -435,5 +435,51 @@ describe('engine abort', () => {
 
     expect(report.aborted).toBe(1);
     expect(report.boulders[0].status).toBe('aborted');
+  });
+});
+
+describe('parseEvaluatorResponse', () => {
+  it('parses clean JSON array', () => {
+    const raw = JSON.stringify([
+      { criterion: 'Is accurate', pass: true, reason: 'Looks good' },
+    ]);
+    const results = parseEvaluatorResponse(raw);
+    expect(results).toHaveLength(1);
+    expect(results[0].pass).toBe(true);
+    expect(results[0].criterion).toBe('Is accurate');
+  });
+
+  it('strips ```json fences before parsing', () => {
+    const raw = '```json\n[\n  { "criterion": "Is accurate", "pass": true, "reason": "OK" }\n]\n```';
+    const results = parseEvaluatorResponse(raw);
+    expect(results).toHaveLength(1);
+    expect(results[0].pass).toBe(true);
+  });
+
+  it('strips bare ``` fences before parsing', () => {
+    const raw = '```\n[{ "criterion": "Test", "pass": false, "reason": "Bad" }]\n```';
+    const results = parseEvaluatorResponse(raw);
+    expect(results).toHaveLength(1);
+    expect(results[0].pass).toBe(false);
+  });
+
+  it('returns failure for non-array JSON', () => {
+    const raw = '{"criterion": "Test", "pass": true}';
+    const results = parseEvaluatorResponse(raw);
+    expect(results).toHaveLength(1);
+    expect(results[0].pass).toBe(false);
+    expect(results[0].message).toContain('non-array');
+  });
+
+  it('returns empty array for empty JSON array', () => {
+    const results = parseEvaluatorResponse('[]');
+    expect(results).toHaveLength(0);
+  });
+
+  it('returns failure for completely unparseable input', () => {
+    const results = parseEvaluatorResponse('not json at all');
+    expect(results).toHaveLength(1);
+    expect(results[0].pass).toBe(false);
+    expect(results[0].message).toContain('Failed to parse');
   });
 });

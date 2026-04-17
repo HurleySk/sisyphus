@@ -10,7 +10,8 @@ import type { TypedEmitter, SisyphusEvents } from './events.js';
 import { FileWatcher, gitDiffStat } from './watcher.js';
 
 /** Parse Hades' JSON response into structured CheckResults. */
-function parseEvaluatorResponse(raw: string): CheckResult[] {
+export function parseEvaluatorResponse(raw: string): CheckResult[] {
+  raw = raw.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
