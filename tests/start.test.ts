@@ -304,3 +304,39 @@ describe('stream-json mode', () => {
     expect(lines).toEqual(['line one', 'line two']);
   });
 });
+
+describe('abort signal', () => {
+  it('rejects with AbortError when signal is already aborted', async () => {
+    const proc = makeProc();
+    mockSpawn.mockReturnValue(proc);
+
+    const controller = new AbortController();
+    controller.abort();
+
+    const promise = start({ prompt: 'Write something', signal: controller.signal });
+
+    // spawn receives the signal — Node emits 'error' with ABORT_ERR
+    const err = new Error('The operation was aborted');
+    (err as any).code = 'ABORT_ERR';
+    proc.emit('error', err);
+
+    await expect(promise).rejects.toThrow();
+    const rejected = await promise.catch(e => e);
+    expect(rejected.name).toBe('AbortError');
+  });
+
+  it('passes signal to spawn options', async () => {
+    const proc = makeProc();
+    mockSpawn.mockReturnValue(proc);
+
+    const controller = new AbortController();
+    const promise = start({ prompt: 'Write something', signal: controller.signal });
+
+    proc.stdout.emit('data', Buffer.from('output'));
+    proc.emit('close', 0);
+    await promise;
+
+    const spawnOpts = mockSpawn.mock.calls[0][2] as any;
+    expect(spawnOpts.signal).toBe(controller.signal);
+  });
+});

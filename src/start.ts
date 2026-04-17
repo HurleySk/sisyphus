@@ -9,6 +9,7 @@ export interface StartOptions {
   model?: 'opus' | 'sonnet' | 'haiku';
   outputFormat?: 'text' | 'json';
   timeout?: number;
+  signal?: AbortSignal;
   onLine?: (line: string) => void;
   onStream?: (event: StreamEvent) => void;
 }
@@ -51,6 +52,7 @@ export async function start(options: StartOptions): Promise<string> {
     const proc = spawn('claude', args, {
       timeout: options.timeout ?? 120_000,
       stdio: ['pipe', 'pipe', 'pipe'],
+      signal: options.signal,
     });
 
     let stdout = '';
@@ -87,7 +89,15 @@ export async function start(options: StartOptions): Promise<string> {
 
     proc.stderr.on('data', (data: Buffer) => { stderr += data.toString(); });
 
-    proc.on('error', reject);
+    proc.on('error', (err: any) => {
+      if (err.code === 'ABORT_ERR') {
+        const abortErr = new Error('Process aborted');
+        abortErr.name = 'AbortError';
+        reject(abortErr);
+      } else {
+        reject(err);
+      }
+    });
     proc.on('close', (code) => {
       // Flush remaining buffer
       if (!useStreamJson && options.onLine && lineBuf.length > 0) {
