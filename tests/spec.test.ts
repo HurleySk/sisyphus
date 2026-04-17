@@ -14,8 +14,8 @@ describe('loadSpec', () => {
     expect(spec.maxRetries).toBe(2);
   });
 
-  it('throws on non-existent file', async () => {
-    await expect(loadSpec('nonexistent.json')).rejects.toThrow();
+  it('throws friendly error on non-existent file', async () => {
+    await expect(loadSpec('nonexistent.json')).rejects.toThrow('Spec file not found: nonexistent.json');
   });
 
   it('throws on invalid JSON content', async () => {

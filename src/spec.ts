@@ -47,7 +47,15 @@ export function validateSpec(data: unknown): ValidationResult {
  */
 export async function loadSpec(filePath: string): Promise<Spec> {
   const absolutePath = path.resolve(filePath);
-  const content = await fs.readFile(absolutePath, 'utf-8');
+  let content: string;
+  try {
+    content = await fs.readFile(absolutePath, 'utf-8');
+  } catch (err: any) {
+    if (err.code === 'ENOENT') {
+      throw new Error(`Spec file not found: ${filePath}`);
+    }
+    throw err;
+  }
   let data: unknown;
 
   try {
