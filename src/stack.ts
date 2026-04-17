@@ -4,6 +4,7 @@ import { glob } from 'glob';
 import { start } from './start.js';
 import type { StackSource, StackResult } from './types.js';
 import type { TypedEmitter, SisyphusEvents } from './events.js';
+import { toForwardSlashes } from './path-utils.js';
 
 const LARGE_FILE_THRESHOLD = 200;
 
@@ -25,7 +26,7 @@ export async function stack(
         : path.join(baseDir, sourcePattern);
 
       // Glob requires forward slashes on all platforms (Windows uses backslashes)
-      const globPattern = resolvedPattern.split(path.sep).join('/');
+      const globPattern = toForwardSlashes(resolvedPattern);
       const matches = await glob(globPattern, { nodir: true });
 
       for (const filePath of matches) {

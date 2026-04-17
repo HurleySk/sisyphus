@@ -19,6 +19,7 @@ import type {
   ClimbPayload,
 } from '../events.js';
 import type { BoulderStatus, CheckResult, RunReport } from '../types.js';
+import { toRelativePath } from '../path-utils.js';
 
 // --- Sub-types ---
 
@@ -167,18 +168,6 @@ export type UIAction =
   | { type: 'evaluate:custom'; payload: EvaluateResultsPayload }
   | { type: 'evaluate:end'; payload: EvaluateEndPayload }
   | { type: 'climb'; payload?: ClimbPayload };
-
-// --- Helpers ---
-
-function toRelativePath(filePath: string, baseDir: string): string {
-  if (!baseDir) return filePath;
-  const normalizedFile = filePath.replace(/\\/g, '/');
-  const normalizedBase = baseDir.replace(/\\/g, '/').replace(/\/$/, '') + '/';
-  if (normalizedFile.startsWith(normalizedBase)) {
-    return normalizedFile.slice(normalizedBase.length);
-  }
-  return filePath;
-}
 
 // --- Reducer ---
 

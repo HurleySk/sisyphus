@@ -3,6 +3,7 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
 import { EventEmitter } from 'events';
+import { toForwardSlashes } from './path-utils.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -47,7 +48,7 @@ export class FileWatcher {
     try {
       this.watcher = watch(this.baseDir, { recursive: true }, (eventType, filename) => {
         if (!filename) return;
-        const normalized = filename.split(path.sep).join('/');
+        const normalized = toForwardSlashes(filename);
         for (const pattern of this.ignorePatterns) {
           if (normalized.startsWith(pattern + '/') || normalized === pattern) return;
         }
