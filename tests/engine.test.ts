@@ -366,3 +366,74 @@ describe('engine event emission', () => {
     expect(report.passedClean).toBe(1);
   });
 });
+
+describe('engine abort', () => {
+  it('aborts remaining boulders when signal fires after first boulder', async () => {
+    const controller = new AbortController();
+
+    const goodTable = '| Col |\n|-----|\n| x |\n| y |\n| z |';
+    mockStart.mockImplementation(async () => {
+      // Abort after first call completes
+      if (mockStart.mock.calls.length === 1) {
+        controller.abort();
+      }
+      return goodTable;
+    });
+
+    const spec: Spec = {
+      ...baseSpec,
+      output: tmpOutput(),
+      boulders: [
+        {
+          name: 'Boulder One',
+          description: 'First boulder',
+          criteria: [{ check: 'row-count-gte', description: 'At least 3 rows', min: 3 }],
+        },
+        {
+          name: 'Boulder Two',
+          description: 'Second boulder — should be aborted',
+          criteria: [{ check: 'row-count-gte', description: 'At least 3 rows', min: 3 }],
+        },
+      ],
+    };
+
+    const report = await runSpec(spec, { signal: controller.signal });
+
+    expect(report.passedClean).toBe(1);
+    expect(report.aborted).toBe(1);
+    expect(report.boulders[0].status).toBe('passed');
+    expect(report.boulders[1].status).toBe('aborted');
+    expect(report.boulders[1].attempts).toBe(0);
+    // Only 1 call — second boulder never started
+    expect(mockStart).toHaveBeenCalledTimes(1);
+  });
+
+  it('aborts mid-boulder when signal fires during start()', async () => {
+    const controller = new AbortController();
+
+    mockStart.mockImplementation(async () => {
+      controller.abort();
+      const err = new Error('Process aborted');
+      err.name = 'AbortError';
+      throw err;
+    });
+
+    const spec: Spec = {
+      ...baseSpec,
+      output: tmpOutput(),
+      maxRetries: 0,
+      boulders: [
+        {
+          name: 'Mid-Abort',
+          description: 'Aborted during production',
+          criteria: [{ check: 'contains-table', description: 'Must have a table' }],
+        },
+      ],
+    };
+
+    const report = await runSpec(spec, { signal: controller.signal });
+
+    expect(report.aborted).toBe(1);
+    expect(report.boulders[0].status).toBe('aborted');
+  });
+});

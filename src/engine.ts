@@ -51,11 +51,12 @@ interface BoulderContext {
   layer: Layer;
   registry: CheckRegistry;
   emitter?: TypedEmitter<SisyphusEvents>;
+  signal?: AbortSignal;
   log: (msg: string) => void;
 }
 
 async function processBoulder(boulder: Boulder, ctx: BoulderContext): Promise<BoulderOutput> {
-  const { maxRetries, baseDir, lessons, layer, registry, emitter, log } = ctx;
+  const { maxRetries, baseDir, lessons, layer, registry, emitter, signal, log } = ctx;
   const boulderStart = Date.now();
 
   try {
@@ -80,6 +81,11 @@ async function processBoulder(boulder: Boulder, ctx: BoulderContext): Promise<Bo
     let climbFeedback: string | undefined;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      if (signal?.aborted) {
+        emitter?.emit('boulder:end', { name: boulder.name, status: 'aborted', attempts: attempt, durationMs: Date.now() - boulderStart });
+        return { name: boulder.name, content: lastOutput, attempts: attempt, status: 'aborted' };
+      }
+
       log(`[${boulder.name}] Attempt ${attempt + 1}/${maxRetries + 1} — producing...`);
 
       // Start Sisyphus (producer)
@@ -104,6 +110,7 @@ async function processBoulder(boulder: Boulder, ctx: BoulderContext): Promise<Bo
       lastOutput = await start({
         prompt: producerPrompt,
         model: 'sonnet',
+        signal,
         onStream: emitter ? (event) => {
           if (event.type === 'thinking') {
             emitter.emit('produce:thinking', { boulderName: boulder.name });
@@ -154,7 +161,7 @@ async function processBoulder(boulder: Boulder, ctx: BoulderContext): Promise<Bo
       if (customCriteria.length > 0) {
         log(`[${boulder.name}] Evaluating (${structuralCriteria.length} structural, ${customCriteria.length} custom)...`);
         const evaluatorPrompt = layer.buildEvaluatorPrompt(lastOutput, customCriteria, stackResults, lessons || undefined);
-        const evalRaw = await start({ prompt: evaluatorPrompt, model: 'sonnet', outputFormat: 'json' });
+        const evalRaw = await start({ prompt: evaluatorPrompt, model: 'sonnet', outputFormat: 'json', signal });
         customResults = parseEvaluatorResponse(evalRaw);
         emitter?.emit('evaluate:custom', { boulderName: boulder.name, results: customResults });
       }
@@ -186,6 +193,11 @@ async function processBoulder(boulder: Boulder, ctx: BoulderContext): Promise<Bo
     return { name: boulder.name, content: lastOutput, attempts: maxRetries + 1, status: 'flagged', failures: lastFailures };
 
   } catch (err: any) {
+    if (err.name === 'AbortError') {
+      log(`[${boulder.name}] ABORTED`);
+      emitter?.emit('boulder:end', { name: boulder.name, status: 'aborted', attempts: 1, durationMs: Date.now() - boulderStart });
+      return { name: boulder.name, content: '', attempts: 1, status: 'aborted' };
+    }
     log(`[${boulder.name}] ERROR: ${err.message}`);
     const errorFailure: CheckResult = {
       criterion: 'execution',
@@ -204,6 +216,7 @@ export async function runSpec(
     lessonsDir?: string;
     verbose?: boolean;
     emitter?: TypedEmitter<SisyphusEvents>;
+    signal?: AbortSignal;
   },
 ): Promise<RunReport> {
   const baseDir = options?.baseDir ?? process.cwd();
@@ -237,10 +250,16 @@ export async function runSpec(
   const verbose = options?.verbose ?? false;
   const log = (msg: string) => { if (verbose) console.log(msg); };
 
+  const signal = options?.signal;
+
   emitter?.emit('run:start', { title: spec.title, layer: spec.layer, totalBoulders: spec.boulders.length, maxRetries, baseDir });
 
   // Boulder loop (Thanatos enforces)
   for (const [index, boulder] of spec.boulders.entries()) {
+    if (signal?.aborted) {
+      outputs.push({ name: boulder.name, content: '', attempts: 0, status: 'aborted' });
+      continue;
+    }
     const output = await processBoulder(boulder, {
       index,
       total: spec.boulders.length,
@@ -250,6 +269,7 @@ export async function runSpec(
       layer,
       registry,
       emitter,
+      signal,
       log,
     });
     outputs.push(output);
