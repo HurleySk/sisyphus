@@ -1,4 +1,5 @@
 import type { CheckResult, Criterion } from '../../../src/types.js';
+import { stripFencedCodeBlocks } from './markdown-utils.js';
 
 /**
  * Strip markdown syntax and return plain text suitable for word counting.
@@ -8,7 +9,7 @@ function stripMarkdown(markdown: string): string {
   let text = markdown;
 
   // Remove fenced code blocks (``` ... ```) — must come first
-  text = text.replace(/^(`{3,})[^\n]*\n[\s\S]*?\n\1\s*$/gm, '');
+  text = stripFencedCodeBlocks(text);
 
   // Remove indented code blocks (lines starting with 4+ spaces after a blank line)
   text = text.replace(/(^|\n)\n( {4}[^\n]*(\n|$))+/g, '\n\n');
