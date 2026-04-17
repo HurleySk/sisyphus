@@ -14,13 +14,17 @@ export async function renderUI(
 ): Promise<RunReport> {
   const emitter = new TypedEmitter<SisyphusEvents>();
   const startTime = Date.now();
+  const controller = new AbortController();
 
   const app = render(
-    React.createElement(App, { emitter, spec, startTime, artifactPath, reportPath }),
+    React.createElement(App, {
+      emitter, spec, startTime, artifactPath, reportPath,
+      onQuit: () => controller.abort(),
+    }),
     { incrementalRendering: true },
   );
 
-  const report = await runSpec(spec, { ...options, emitter });
+  const report = await runSpec(spec, { ...options, emitter, signal: controller.signal });
 
   await new Promise(r => setTimeout(r, 100));
   app.unmount();

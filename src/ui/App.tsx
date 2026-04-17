@@ -20,9 +20,10 @@ export interface AppProps {
   startTime: number;
   artifactPath: string;
   reportPath: string;
+  onQuit?: () => void;
 }
 
-export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppProps) {
+export function App({ emitter, spec, startTime, artifactPath, reportPath, onQuit }: AppProps) {
   const state = useEngine(emitter);
   useTick(); // single 1s interval drives all elapsed values
   const elapsed = startTime ? elapsedSeconds(startTime) : 0;
@@ -39,6 +40,7 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
       setExpanded(prev => !prev);
     }
     if (input === 'q') {
+      onQuit?.();
       exit();
     }
   });
