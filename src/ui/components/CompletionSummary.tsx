@@ -5,11 +5,12 @@ import type { CompletedBoulder } from '../state.js';
 import { formatElapsed, formatDuration, boulderStatusStyle } from '../format.js';
 
 function truncateMessage(msg: string, max = 120): string {
-  const lines = msg.split('\n');
-  const firstLine = lines[0];
-  const multiLine = lines.length > 1;
+  const firstLine = msg.split('\n')[0];
+  const multiLine = msg.includes('\n');
   if (firstLine.length <= max) return multiLine ? firstLine + '...' : firstLine;
-  return firstLine.slice(0, max) + '...';
+  const truncated = firstLine.slice(0, max);
+  const lastSpace = truncated.lastIndexOf(' ');
+  return (lastSpace > max * 0.5 ? truncated.slice(0, lastSpace) : truncated) + '...';
 }
 
 interface CompletionSummaryProps {
