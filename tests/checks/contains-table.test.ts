@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseTable, containsTable } from '../../layers/documentation/checks/contains-table.js';
-import type { Criterion } from '../../src/types.js';
+import { criterion } from '../helpers.js';
 
 const TABLE_MD = `
 | Name | Value | Status |
@@ -14,10 +14,6 @@ const NO_TABLE_MD = `
 
 Some plain text with no table at all.
 `;
-
-function criterion(overrides: Partial<Criterion> = {}): Criterion {
-  return { check: 'contains-table', description: 'test', ...overrides };
-}
 
 describe('parseTable', () => {
   it('returns columns and rows for a valid table', () => {
@@ -36,42 +32,42 @@ describe('parseTable', () => {
 
 describe('containsTable', () => {
   it('passes when table is present and no columns required', () => {
-    const result = containsTable(TABLE_MD, criterion());
+    const result = containsTable(TABLE_MD, criterion({ check: 'contains-table' }));
     expect(result.pass).toBe(true);
     expect(result.criterion).toBe('contains-table');
   });
 
   it('passes when required columns are present', () => {
-    const result = containsTable(TABLE_MD, criterion({ columns: ['Name', 'Value'] }));
+    const result = containsTable(TABLE_MD, criterion({ check: 'contains-table', columns: ['Name', 'Value'] }));
     expect(result.pass).toBe(true);
   });
 
   it('matches columns case-insensitively', () => {
-    const result = containsTable(TABLE_MD, criterion({ columns: ['name', 'STATUS'] }));
+    const result = containsTable(TABLE_MD, criterion({ check: 'contains-table', columns: ['name', 'STATUS'] }));
     expect(result.pass).toBe(true);
   });
 
   it('fails when no table is present', () => {
-    const result = containsTable(NO_TABLE_MD, criterion());
+    const result = containsTable(NO_TABLE_MD, criterion({ check: 'contains-table' }));
     expect(result.pass).toBe(false);
     expect(result.message).toMatch(/no table/i);
   });
 
   it('fails when a required column is missing', () => {
-    const result = containsTable(TABLE_MD, criterion({ columns: ['Name', 'Missing'] }));
+    const result = containsTable(TABLE_MD, criterion({ check: 'contains-table', columns: ['Name', 'Missing'] }));
     expect(result.pass).toBe(false);
     expect(result.message).toMatch(/missing/i);
   });
 
   it('ignores tables inside code blocks', () => {
     const md = '# Example\n\nSome text.\n\n```\n| Fake | Table |\n|------|-------|\n| a    | b     |\n```\n';
-    const result = containsTable(md, criterion());
+    const result = containsTable(md, criterion({ check: 'contains-table' }));
     expect(result.pass).toBe(false);
   });
 
   it('handles escaped pipes in cells', () => {
     const md = '| Name | Value |\n|------|-------|\n| a \\| b | c |\n';
-    const result = containsTable(md, criterion({ columns: ['Name', 'Value'] }));
+    const result = containsTable(md, criterion({ check: 'contains-table', columns: ['Name', 'Value'] }));
     expect(result.pass).toBe(true);
   });
 });

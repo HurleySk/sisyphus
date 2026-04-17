@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { wordCountGte, wordCountLte } from '../../layers/documentation/checks/word-count.js';
-import type { Criterion } from '../../src/types.js';
+import { criterion } from '../helpers.js';
 
 // 10 content words: "The quick brown fox jumps over the lazy dog today"
 const SIMPLE_MD = `The quick brown fox jumps over the lazy dog today`;
@@ -21,23 +21,19 @@ const MARKDOWN_HEAVY = `
 ![image](img.png)
 `;
 
-function criterion(overrides: Partial<Criterion> = {}): Criterion {
-  return { check: 'word-count-gte', description: 'test', ...overrides };
-}
-
 describe('wordCountGte', () => {
   it('passes at exact minimum', () => {
-    const result = wordCountGte(SIMPLE_MD, criterion({ min: 10 }));
+    const result = wordCountGte(SIMPLE_MD, criterion({ check: 'word-count-gte', min: 10 }));
     expect(result.pass).toBe(true);
   });
 
   it('passes above minimum', () => {
-    const result = wordCountGte(SIMPLE_MD, criterion({ min: 5 }));
+    const result = wordCountGte(SIMPLE_MD, criterion({ check: 'word-count-gte', min: 5 }));
     expect(result.pass).toBe(true);
   });
 
   it('fails below minimum', () => {
-    const result = wordCountGte(SIMPLE_MD, criterion({ min: 100 }));
+    const result = wordCountGte(SIMPLE_MD, criterion({ check: 'word-count-gte', min: 100 }));
     expect(result.pass).toBe(false);
     expect(result.message).toMatch(/\d+.*100|fewer|below/i);
   });
@@ -46,7 +42,7 @@ describe('wordCountGte', () => {
     // The 10 content words from MARKDOWN_HEAVY should be counted, plus "list item" and "blockquote" content
     // Key: table rows, headings, bold, italic, links, images, inline code should be stripped
     // After stripping, we expect at least the 10 core words to remain
-    const result = wordCountGte(MARKDOWN_HEAVY, criterion({ min: 1 }));
+    const result = wordCountGte(MARKDOWN_HEAVY, criterion({ check: 'word-count-gte', min: 1 }));
     expect(result.pass).toBe(true);
     // Should not count markdown syntax tokens as words
     expect(result.message).not.toMatch(/col1|col2/i);
@@ -74,7 +70,7 @@ describe('wordCountLte', () => {
 describe('fenced code block exclusion', () => {
   it('excludes content inside fenced code blocks from word count', () => {
     const md = 'Hello world.\n\n```javascript\nconst x = 1;\nconst y = 2;\nconst z = 3;\n```\n\nGoodbye.';
-    const result = wordCountGte(md, criterion({ min: 3 }));
+    const result = wordCountGte(md, criterion({ check: 'word-count-gte', min: 3 }));
     expect(result.pass).toBe(true); // "Hello world Goodbye" = 3 words
     const result2 = wordCountLte(md, criterion({ check: 'word-count-lte', max: 5 }));
     expect(result2.pass).toBe(true); // Should not count code block content

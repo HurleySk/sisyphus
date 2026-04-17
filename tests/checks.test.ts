@@ -1,10 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CheckRegistry } from '../src/checks.js';
 import type { CheckFn, Criterion } from '../src/types.js';
-
-function makeCriterion(overrides: Partial<Criterion> = {}): Criterion {
-  return { check: 'test-check', description: 'A test criterion', ...overrides };
-}
+import { criterion } from './helpers.js';
 
 const passingCheck: CheckFn = (_markdown, criterion) => ({
   criterion: criterion.description,
@@ -71,8 +68,8 @@ describe('CheckRegistry', () => {
       registry.register('fails', failingCheck);
 
       const criteria: Criterion[] = [
-        makeCriterion({ check: 'passes', description: 'Should pass' }),
-        makeCriterion({ check: 'fails', description: 'Should fail' }),
+        criterion({ check: 'passes', description: 'Should pass' }),
+        criterion({ check: 'fails', description: 'Should fail' }),
       ];
 
       const results = registry.runChecks('# Some markdown', criteria);
@@ -88,8 +85,8 @@ describe('CheckRegistry', () => {
       const registry = new CheckRegistry();
 
       const criteria: Criterion[] = [
-        makeCriterion({ check: 'custom', description: 'AI evaluated criterion' }),
-        makeCriterion({ check: 'custom', description: 'Another AI criterion' }),
+        criterion({ check: 'custom', description: 'AI evaluated criterion' }),
+        criterion({ check: 'custom', description: 'Another AI criterion' }),
       ];
 
       const results = registry.runChecks('# Some markdown', criteria);
@@ -101,9 +98,9 @@ describe('CheckRegistry', () => {
       registry.register('known-check', passingCheck);
 
       const criteria: Criterion[] = [
-        makeCriterion({ check: 'known-check', description: 'Structural check' }),
-        makeCriterion({ check: 'custom', description: 'AI check - skipped' }),
-        makeCriterion({ check: 'not-registered', description: 'Unknown check type' }),
+        criterion({ check: 'known-check', description: 'Structural check' }),
+        criterion({ check: 'custom', description: 'AI check - skipped' }),
+        criterion({ check: 'not-registered', description: 'Unknown check type' }),
       ];
 
       const results = registry.runChecks('# Markdown', criteria);
@@ -121,7 +118,7 @@ describe('CheckRegistry', () => {
       const registry = new CheckRegistry();
 
       const criteria: Criterion[] = [
-        makeCriterion({ check: 'does-not-exist', description: 'Missing check' }),
+        criterion({ check: 'does-not-exist', description: 'Missing check' }),
       ];
 
       const results = registry.runChecks('# Markdown', criteria);

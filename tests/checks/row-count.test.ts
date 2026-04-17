@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { rowCountGte, rowCountLte } from '../../layers/documentation/checks/row-count.js';
-import type { Criterion } from '../../src/types.js';
+import { criterion } from '../helpers.js';
 
 // 3 data rows
 const TABLE_3_ROWS = `
@@ -12,10 +12,6 @@ const TABLE_3_ROWS = `
 `;
 
 const NO_TABLE = `No table here.`;
-
-function criterion(overrides: Partial<Criterion> = {}): Criterion {
-  return { check: 'row-count-gte', description: 'test', ...overrides };
-}
 
 describe('rowCountGte', () => {
   it('passes at exact minimum', () => {
