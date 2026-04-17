@@ -169,6 +169,27 @@ export type UIAction =
   | { type: 'evaluate:end'; payload: EvaluateEndPayload }
   | { type: 'climb'; payload?: ClimbPayload };
 
+// --- Reducer helpers ---
+
+function resetAgentPanel(overrides: Partial<AgentPanelState>): AgentPanelState {
+  return { ...defaultAgentPanel, ...overrides };
+}
+
+function appendPhaseHistory(state: UIState, ...entries: PhaseHistoryEntry[]): PhaseHistoryEntry[] {
+  return [...state.phaseHistory, ...entries];
+}
+
+function updateLastPhaseEntry(
+  history: PhaseHistoryEntry[],
+  agent: AgentMode,
+  update: (entry: PhaseHistoryEntry) => PhaseHistoryEntry,
+): PhaseHistoryEntry[] {
+  if (history.length === 0) return history;
+  const lastIdx = history.length - 1;
+  if (history[lastIdx].agent !== agent) return history;
+  return [...history.slice(0, lastIdx), update(history[lastIdx])];
+}
+
 // --- Reducer ---
 
 export function uiReducer(state: UIState, action: UIAction): UIState {
@@ -214,11 +235,10 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       return {
         ...state,
         activeBoulder: fresh,
-        agentPanel: {
-          ...defaultAgentPanel,
+        agentPanel: resetAgentPanel({
           boulderDescription: description,
           criteriaDescriptions: criteriaDescriptions,
-        },
+        }),
       };
     }
 
@@ -249,8 +269,8 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         ...state,
         activeBoulder: null,
         completedBoulders: [...state.completedBoulders, completed],
-        agentPanel: { ...defaultAgentPanel, agent: 'done' },
-        phaseHistory: [...state.phaseHistory, hadesEntry],
+        agentPanel: resetAgentPanel({ agent: 'done' }),
+        phaseHistory: appendPhaseHistory(state, hadesEntry),
       };
     }
 
@@ -259,15 +279,14 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       return {
         ...state,
         activeBoulder: { ...state.activeBoulder, phase: 'stack' },
-        agentPanel: {
-          ...defaultAgentPanel,
+        agentPanel: resetAgentPanel({
           agent: 'gathering',
           boulderName: state.activeBoulder?.name ?? null,
           startedAt: Date.now(),
           sourceCount: action.payload?.sourceCount ?? 0,
           boulderDescription: state.agentPanel.boulderDescription,
           criteriaDescriptions: state.agentPanel.criteriaDescriptions,
-        },
+        }),
       };
     }
 
@@ -325,8 +344,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
           fileChanges: [],
           diffStat: null,
         },
-        agentPanel: {
-          ...defaultAgentPanel,
+        agentPanel: resetAgentPanel({
           agent: 'sisyphus',
           boulderName: resolvedName,
           attempt: action.payload.attempt,
@@ -337,8 +355,8 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
           producerStatusStartedAt: Date.now(),
           boulderDescription: state.agentPanel.boulderDescription,
           criteriaDescriptions: state.agentPanel.criteriaDescriptions,
-        },
-        phaseHistory: [...state.phaseHistory, ...historyAdditions],
+        }),
+        phaseHistory: appendPhaseHistory(state, ...historyAdditions),
       };
     }
 
@@ -432,8 +450,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
           customResults: null,
           results: null,
         },
-        agentPanel: {
-          ...defaultAgentPanel,
+        agentPanel: resetAgentPanel({
           agent: 'hades',
           boulderName: state.agentPanel.boulderName,
           attempt: state.agentPanel.attempt,
@@ -441,8 +458,8 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
           startedAt: Date.now(),
           retryHistory: state.agentPanel.retryHistory,
           checkCount: (evalPayload?.structuralCount ?? 0) + (evalPayload?.customCount ?? 0),
-        },
-        phaseHistory: [...state.phaseHistory, sisyphusEntry],
+        }),
+        phaseHistory: appendPhaseHistory(state, sisyphusEntry),
       };
     }
 
@@ -510,14 +527,11 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         : ' \u2192 failed';
 
       // Update the last phase history entry (should be the sisyphus entry from evaluate:start)
-      const updatedHistory = [...state.phaseHistory];
-      const lastIdx = updatedHistory.length - 1;
-      if (lastIdx >= 0 && updatedHistory[lastIdx].agent === 'sisyphus') {
-        updatedHistory[lastIdx] = {
-          ...updatedHistory[lastIdx],
-          summary: updatedHistory[lastIdx].summary + failSuffix,
-        };
-      }
+      const updatedHistory = updateLastPhaseEntry(
+        state.phaseHistory,
+        'sisyphus',
+        (entry) => ({ ...entry, summary: entry.summary + failSuffix }),
+      );
 
       return {
         ...state,
