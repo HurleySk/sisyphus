@@ -2,10 +2,10 @@ import { describe, it, expect, afterEach } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import type { BoulderOutput } from '../src/types.js';
+import type { BoulderOutput, BoulderStatus } from '../src/types.js';
 import { buildReport, writeReport } from '../src/report.js';
 
-const makeBoulder = (name: string, status: 'passed' | 'flagged', attempts: number): BoulderOutput => ({
+const makeBoulder = (name: string, status: BoulderStatus, attempts: number): BoulderOutput => ({
   name,
   content: `Content for ${name}`,
   attempts,
@@ -55,6 +55,21 @@ describe('buildReport', () => {
     expect(report.passedAfterClimb).toBe(0);
     expect(report.flagged).toBe(0);
     expect(report.boulders).toEqual([]);
+  });
+
+  it('counts aborted boulders', () => {
+    const outputs: BoulderOutput[] = [
+      makeBoulder('done', 'passed', 1),
+      makeBoulder('killed', 'aborted', 1),
+      makeBoulder('skipped', 'aborted', 0),
+    ];
+
+    const report = buildReport('Abort Test', outputs);
+
+    expect(report.passedClean).toBe(1);
+    expect(report.flagged).toBe(0);
+    expect(report.aborted).toBe(2);
+    expect(report.totalBoulders).toBe(3);
   });
 });
 

@@ -12,6 +12,7 @@ export function buildReport(title: string, outputs: BoulderOutput[]): RunReport 
     passedClean: outputs.filter(o => o.status === 'passed' && o.attempts === 1).length,
     passedAfterClimb: outputs.filter(o => o.status === 'passed' && o.attempts > 1).length,
     flagged: outputs.filter(o => o.status === 'flagged').length,
+    aborted: outputs.filter(o => o.status === 'aborted').length,
   };
 }
 

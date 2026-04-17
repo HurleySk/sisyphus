@@ -37,7 +37,7 @@ export interface Spec {
   boulders: Boulder[];
 }
 
-export type BoulderStatus = 'passed' | 'flagged';
+export type BoulderStatus = 'passed' | 'flagged' | 'aborted';
 
 // --- Result types ---
 
@@ -70,6 +70,7 @@ export interface RunReport {
   passedClean: number;
   passedAfterClimb: number;
   flagged: number;
+  aborted: number;
 }
 
 // --- Layer interface ---
