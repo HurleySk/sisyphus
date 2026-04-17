@@ -1,6 +1,6 @@
 // src/events.ts
 import { EventEmitter } from 'events';
-import type { CheckResult, RunReport } from './types.js';
+import type { BoulderStatus, CheckResult, RunReport } from './types.js';
 
 // --- Event payload types ---
 
@@ -27,7 +27,7 @@ export interface BoulderStartPayload {
 
 export interface BoulderEndPayload {
   name: string;
-  status: 'passed' | 'flagged';
+  status: BoulderStatus;
   attempts: number;
   durationMs: number;
   failures?: CheckResult[];

@@ -18,7 +18,7 @@ import type {
   EvaluateEndPayload,
   ClimbPayload,
 } from '../events.js';
-import type { CheckResult, RunReport } from '../types.js';
+import type { BoulderStatus, CheckResult, RunReport } from '../types.js';
 
 // --- Sub-types ---
 
@@ -111,7 +111,7 @@ export interface BoulderUIState {
 
 export interface CompletedBoulder {
   name: string;
-  status: 'passed' | 'flagged';
+  status: BoulderStatus;
   attempts: number;
   durationMs: number;
   failures?: CheckResult[];

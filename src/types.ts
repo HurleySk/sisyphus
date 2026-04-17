@@ -37,6 +37,8 @@ export interface Spec {
   boulders: Boulder[];
 }
 
+export type BoulderStatus = 'passed' | 'flagged';
+
 // --- Result types ---
 
 export interface StackResult {
@@ -55,7 +57,7 @@ export interface BoulderOutput {
   name: string;
   content: string;
   attempts: number;
-  status: 'passed' | 'flagged';
+  status: BoulderStatus;
   failures?: CheckResult[];
 }
 
