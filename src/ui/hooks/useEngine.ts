@@ -3,6 +3,7 @@ import { useReducer, useEffect, useRef, useCallback } from 'react';
 import type { TypedEmitter, SisyphusEvents } from '../../events.js';
 import { uiReducer, initialUIState } from '../state.js';
 import type { UIState, UIAction } from '../state.js';
+import { BATCH_FLUSH_MS } from '../constants.js';
 
 const EVENT_NAMES: Array<keyof SisyphusEvents & string> = [
   'run:start',
@@ -27,7 +28,6 @@ const EVENT_NAMES: Array<keyof SisyphusEvents & string> = [
 
 /** Events that arrive in rapid bursts and should be batched */
 const BATCH_EVENTS = new Set<string>(['produce:stream']);
-const BATCH_FLUSH_MS = 50;
 
 export function useEngine(emitter: TypedEmitter<SisyphusEvents>): UIState {
   const [state, dispatch] = useReducer(uiReducer, initialUIState);

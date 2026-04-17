@@ -3,6 +3,7 @@ import { Box, Text } from 'ink';
 import type { CompletedBoulder } from '../state.js';
 import { ProgressBar } from './ProgressBar.js';
 import { formatElapsed, formatDuration, boulderStatusStyle } from '../format.js';
+import { SEPARATOR_SOLID } from '../constants.js';
 
 interface StatusBarProps {
   completed: CompletedBoulder[];
@@ -127,7 +128,7 @@ export function StatusBar({ completed, activeBoulderName, boulderElapsed, pendin
 
   return (
     <Box flexDirection="column">
-      <Text dimColor>{'━'.repeat(separatorWidth)}</Text>
+      <Text dimColor>{SEPARATOR_SOLID.repeat(separatorWidth)}</Text>
       <Box>
         {layout.collapsedCompleted !== null ? (
           <Text dimColor>{layout.collapsedCompleted}✓{'    '}</Text>

@@ -5,20 +5,14 @@ import type { Spec } from '../types.js';
 import { useEngine } from './hooks/useEngine.js';
 import { useTick, elapsedSeconds } from './hooks/useElapsed.js';
 import { AgentPanel } from './components/AgentPanel.js';
-import { agentConfig } from './components/AgentHeader.js';
+import { agentColor, MAX_VISIBLE_PHASES, STATUS_BAR_HEIGHT, KEY_HINT_HEIGHT, SEPARATOR_DOTTED } from './constants.js';
 import { CompletionSummary } from './components/CompletionSummary.js';
 import { StatusBar } from './components/StatusBar.js';
-import type { AgentMode, PhaseHistoryEntry } from './state.js';
+import type { PhaseHistoryEntry } from './state.js';
 
 type StaticItem =
   | { __type: 'title'; title: string; layer: string; totalBoulders: number }
   | PhaseHistoryEntry;
-
-export const MAX_VISIBLE_PHASES = 6;
-
-function agentColor(agent: AgentMode): string {
-  return agentConfig[agent].color;
-}
 
 export interface AppProps {
   emitter: TypedEmitter<SisyphusEvents>;
@@ -36,8 +30,6 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
   const boulderElapsed = state.activeBoulder?.startedAt ? elapsedSeconds(state.activeBoulder.startedAt) : 0;
   const { columns, rows } = useWindowSize();
   const { exit } = useApp();
-  const STATUS_BAR_HEIGHT = 3;
-  const KEY_HINT_HEIGHT = 1;
 
   const evictedRef = React.useRef(0);
   const [expanded, setExpanded] = React.useState(false);
@@ -99,7 +91,7 @@ export function App({ emitter, spec, startTime, artifactPath, reportPath }: AppP
     return null;
   })();
 
-  const headerSeparator = '╌'.repeat(columns ?? 54);
+  const headerSeparator = SEPARATOR_DOTTED.repeat(columns ?? 54);
 
   return (
     <Box flexDirection="column">

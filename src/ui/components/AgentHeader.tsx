@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import type { AgentMode } from '../state.js';
 import { formatElapsed } from '../format.js';
+import { AGENT_CONFIG } from '../constants.js';
 
 interface AgentHeaderProps {
   agent: AgentMode;
@@ -13,17 +14,8 @@ interface AgentHeaderProps {
   sourceCount?: number;
 }
 
-export const agentConfig: Record<AgentMode, { label: string; color: string }> = {
-  idle: { label: '', color: 'dim' },
-  gathering: { label: 'GATHERING', color: 'cyan' },
-  sisyphus: { label: 'SISYPHUS', color: 'magenta' },
-  hades: { label: 'HADES', color: 'red' },
-  retry: { label: 'RETRY', color: 'yellow' },
-  done: { label: 'DONE', color: 'green' },
-};
-
 export function AgentHeader({ agent, boulderName, attempt, maxAttempts, elapsed, checkCount, sourceCount }: AgentHeaderProps) {
-  const config = agentConfig[agent];
+  const config = AGENT_CONFIG[agent];
   if (agent === 'idle') return null;
 
   const showAttempt = agent === 'sisyphus' || agent === 'retry';
